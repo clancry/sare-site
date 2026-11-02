@@ -55,6 +55,18 @@ function adminPage(list) {
 <h1>SARE · ${list.length} request${list.length === 1 ? "" : "s"}</h1><div class="w"><table>${rows || "<tr><td>No requests yet.</td></tr>"}</table></div>`;
 }
 
+
+// Indicative FX rates (ECB reference rates via frankfurter.app), cached 12 h
+let fx = { at: 0, rates: null };
+async function getRates() {
+  if (fx.rates && Date.now() - fx.at < 12 * 3600e3) return fx.rates;
+  try {
+    const r = await fetch("https://api.frankfurter.app/latest?from=EUR&to=USD,GBP,CAD,CHF,BRL", { signal: AbortSignal.timeout(5000) });
+    if (r.ok) { const j = await r.json(); if (j && j.rates) fx = { at: Date.now(), rates: { EUR: 1, ...j.rates } }; }
+  } catch (e) { console.error("fx", e.message); }
+  return fx.rates;
+}
+
 const server = http.createServer(async (req, res) => {
   const url = new URL(req.url, "http://x");
   const ip = (req.headers["x-forwarded-for"] || req.socket.remoteAddress || "").split(",")[0].trim();
@@ -73,6 +85,11 @@ const server = http.createServer(async (req, res) => {
     const list = readAll();
     if (url.pathname === "/admin.json") { res.writeHead(200, { "Content-Type": "application/json" }); return res.end(JSON.stringify(list)); }
     res.writeHead(200, { "Content-Type": "text/html; charset=utf-8", "Cache-Control": "no-store" }); return res.end(adminPage(list));
+  }
+  if (url.pathname === "/api/rates") {
+    const rates = await getRates();
+    res.writeHead(rates ? 200 : 503, { "Content-Type": "application/json", "Cache-Control": "public, max-age=3600" });
+    return res.end(JSON.stringify(rates ? { base: "EUR", rates } : { error: "unavailable" }));
   }
   if (url.pathname === "/healthz") { res.writeHead(200); return res.end("ok"); }
   if (url.pathname === "/robots.txt") { res.writeHead(200, { "Content-Type": "text/plain" }); return res.end("User-agent: *\nDisallow: /admin\nSitemap: https://sare-exclusive.com/sitemap.xml\n"); }
