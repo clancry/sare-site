@@ -1051,12 +1051,14 @@ const eur=n=>n==null?t("common.onRequest"):lang==="en"?CONFIG.currency+nf(n):nf(
 /* currency: prices are set in EUR; other currencies are an indicative conversion */
 const CURS=["EUR","USD","GBP","CAD","CHF","BRL"];
 let FX={EUR:1,USD:1.16,GBP:0.87,CAD:1.61,CHF:0.93,BRL:6.25};
-let cur=store.get("sare_cur");if(!CURS.includes(cur))cur="EUR";
+const curFor=l=>l==="en"?"USD":"EUR"; // default by language until the visitor picks one
+let curPicked=store.get("sare_cur");if(!CURS.includes(curPicked))curPicked=null;
+let cur=curPicked||curFor(lang);
 const loc=()=>lang==="pt"?"pt-BR":lang==="en"?"en-US":lang;
 const money=n=>{if(n==null)return t("common.onRequest");if(cur==="EUR")return eur(n);
   const v=Math.round(n*(FX[cur]||1)/10)*10;
   return "≈ "+new Intl.NumberFormat(loc(),{style:"currency",currency:cur,maximumFractionDigits:0,currencyDisplay:"narrowSymbol"}).format(v)};
-function setCur(c){cur=c;store.set("sare_cur",c);renderAll()}
+function setCur(c){cur=c;curPicked=c;store.set("sare_cur",c);renderAll()}
 if(CONFIG.api){fetch(CONFIG.api.replace(/request$/,"rates")).then(r=>r.ok?r.json():null).then(j=>{if(j&&j.rates){for(const k of CURS)if(j.rates[k])FX[k]=j.rates[k];if(cur!=="EUR")renderAll()}}).catch(()=>{})}
 
 /* ======================= helpers ======================= */
@@ -1623,7 +1625,7 @@ function renderOwner(){
 })();
 
 /* ======================= INIT ======================= */
-function setLang(c){lang=c;store.set("sare_lang",c);renderAll()}
+function setLang(c){lang=c;store.set("sare_lang",c);if(!curPicked)cur=curFor(c);renderAll()}
 function renderAll(){renderChrome();fitNav();renderStatic();renderWayfinding();renderExplorer();renderHome();renderYacht();renderCharter();renderTender();renderVoyages();renderCrew();renderBookForm();renderSummary();renderOwner()}
 renderAll();route();
 </script>
