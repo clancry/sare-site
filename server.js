@@ -12,6 +12,8 @@ const FILE = path.join(DATA_DIR, "requests.jsonl");
 const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || "";
 const NOTIFY_TO = process.env.NOTIFY_TO || "contact@sare-exclusive.com";
 const MAIL_FROM = process.env.MAIL_FROM || process.env.SMTP_USER || "SARE <no-reply@sare-exclusive.com>";
+const HEADS = JSON.parse(fs.readFileSync(path.join(path.dirname(new URL(import.meta.url).pathname), "heads.json"), "utf8"));
+const BODY = fs.readFileSync(path.join(PUB, "_body.html"), "utf8");
 const PAY_FILE = path.join(DATA_DIR, "payments.jsonl");
 const STRIPE_KEY = process.env.STRIPE_SECRET_KEY || "";
 const STRIPE_WH = process.env.STRIPE_WEBHOOK_SECRET || "";
@@ -177,8 +179,17 @@ const server = http.createServer(async (req, res) => {
     return res.end(JSON.stringify(rates ? { base: "EUR", rates } : { error: "unavailable" }));
   }
   if (url.pathname === "/healthz") { res.writeHead(200); return res.end("ok"); }
-  if (url.pathname === "/robots.txt") { res.writeHead(200, { "Content-Type": "text/plain" }); return res.end("User-agent: *\nDisallow: /admin\nSitemap: https://sare-exclusive.com/sitemap.xml\n"); }
-  if (url.pathname === "/sitemap.xml") { res.writeHead(200, { "Content-Type": "application/xml" }); return res.end('<?xml version="1.0" encoding="UTF-8"?><urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"><url><loc>https://sare-exclusive.com/</loc></url></urlset>'); }
+  if (url.pathname === "/robots.txt") { res.writeHead(200, { "Content-Type": "text/plain" }); return res.end("User-agent: *\nDisallow: /admin\nDisallow: /api/\nSitemap: https://www.sare-exclusive.com/sitemap.xml\n"); }
+  if (!path.extname(url.pathname) && url.pathname !== "/") {
+    let p = decodeURIComponent(url.pathname);
+    const lp = p.replace(/\/+$/, "");
+    if (/^\/(fr|es|ru|pt|nl)$/.test(lp) && p !== lp + "/") { res.writeHead(301, { Location: lp + "/" + url.search }); return res.end(); }
+    const key = HEADS[p] ? p : (HEADS[lp] ? lp : null);
+    if (key && key !== p) { res.writeHead(301, { Location: key + url.search }); return res.end(); }
+    if (key) { res.writeHead(200, { "Content-Type": "text/html; charset=utf-8", "Cache-Control": "no-cache" }); return res.end(HEADS[key] + BODY); }
+    res.writeHead(301, { Location: "/" }); return res.end();
+  }
+  if (url.pathname === "/_body.html") { res.writeHead(404); return res.end("Not found"); }
   let p = decodeURIComponent(url.pathname); if (p === "/" || !path.extname(p)) p = "/index.html";
   const f = path.join(PUB, path.normalize(p).replace(/^(\.\.[/\\])+/, ""));
   if (!f.startsWith(PUB) || !fs.existsSync(f)) { res.writeHead(404); return res.end("Not found"); }
