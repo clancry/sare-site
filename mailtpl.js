@@ -3,30 +3,48 @@ import PDFDocument from "pdfkit";
 import path from "node:path";
 const FD = path.join(path.dirname(new URL(import.meta.url).pathname), "fonts");
 
+
+const T = {
+  fr: { loc:"fr-FR", charter:"Demande · Day charter", tender:"Demande · Tender yacht", client:"Client", name:"Nom", role:"Rôle", contact:"Contact", lang:"Langue", yacht:"Yacht", length:"Longueur", anchor:"Mouillage", period:"Période", from:"Du", to:"Au", guests:"Invités", services:"Services", asked:"Demandés", msg:"Message", outing:"Sortie", formula:"Formule", date:"Date", dep:"Départ", occ:"Occasion", opts:"Options & tarif", options:"Options", est:"Estimation", pickup:"Prise en charge demandée",
+    subj:"Votre demande SARE est bien reçue", hello:"Bonjour", thanks:"Merci pour votre demande. Nous l'avons bien reçue et nous revenons vers vous très rapidement, en général dans les heures qui suivent, pour confirmer la disponibilité et finaliser les détails.", recap:"Récapitulatif", estNote:"Estimation indicative. Le devis définitif vous sera confirmé par votre handler.", next:"Et maintenant ?", steps:["Nous vérifions la disponibilité du bateau et d'un capitaine de notre flotte.","Cédric ou Rebecca vous contacte pour affiner votre journée.","Une fois validée, nous vous envoyons le lien de réservation."], reach:"Une question ? Vos handlers sont joignables directement :", pdf:"Votre récapitulatif est joint en PDF.", sign:"À très bientôt en mer,", team:"L'équipe SARE" },
+  en: { loc:"en-US", charter:"Request · Day charter", tender:"Request · Tender yacht", client:"Guest", name:"Name", role:"Role", contact:"Contact", lang:"Language", yacht:"Yacht", length:"Length", anchor:"Anchorage", period:"Period", from:"From", to:"To", guests:"Guests", services:"Services", asked:"Requested", msg:"Message", outing:"Your day", formula:"Experience", date:"Date", dep:"Departure", occ:"Occasion", opts:"Options & rate", options:"Options", est:"Estimate", pickup:"Pick-up requested",
+    subj:"Your SARE request has been received", hello:"Dear", thanks:"Thank you for your request. We have received it and will be back to you very shortly, usually within a few hours, to confirm availability and finalise the details.", recap:"Summary", estNote:"Indicative estimate. Your final quote will be confirmed by your handler.", next:"What happens next", steps:["We check the availability of the boat and a captain from our fleet.","Cédric or Rebecca contacts you to tailor your day.","Once confirmed, we send you the booking link."], reach:"Any question? Your handlers are reachable directly:", pdf:"Your summary is attached as a PDF.", sign:"See you soon at sea,", team:"The SARE team" },
+  es: { loc:"es-ES", charter:"Solicitud · Charter de día", tender:"Solicitud · Tender yacht", client:"Cliente", name:"Nombre", role:"Cargo", contact:"Contacto", lang:"Idioma", yacht:"Yate", length:"Eslora", anchor:"Fondeo", period:"Periodo", from:"Desde", to:"Hasta", guests:"Invitados", services:"Servicios", asked:"Solicitados", msg:"Mensaje", outing:"Su día", formula:"Fórmula", date:"Fecha", dep:"Salida", occ:"Ocasión", opts:"Opciones y tarifa", options:"Opciones", est:"Estimación", pickup:"Recogida solicitada",
+    subj:"Hemos recibido su solicitud SARE", hello:"Estimado/a", thanks:"Gracias por su solicitud. La hemos recibido y le responderemos muy pronto, normalmente en pocas horas, para confirmar la disponibilidad y concretar los detalles.", recap:"Resumen", estNote:"Estimación orientativa. Su handler le confirmará el presupuesto definitivo.", next:"¿Y ahora?", steps:["Comprobamos la disponibilidad del barco y de un capitán de nuestra flota.","Cédric o Rebecca se pone en contacto para preparar su día.","Una vez confirmado, le enviamos el enlace de reserva."], reach:"¿Alguna pregunta? Puede contactar directamente con sus handlers:", pdf:"Adjuntamos su resumen en PDF.", sign:"Hasta pronto en el mar,", team:"El equipo SARE" },
+  ru: { loc:"ru-RU", charter:"Запрос · Дневная прогулка", tender:"Запрос · Тендер", client:"Гость", name:"Имя", role:"Должность", contact:"Контакт", lang:"Язык", yacht:"Яхта", length:"Длина", anchor:"Стоянка", period:"Период", from:"С", to:"По", guests:"Гости", services:"Услуги", asked:"Запрошено", msg:"Сообщение", outing:"Ваш день", formula:"Формат", date:"Дата", dep:"Отправление", occ:"Повод", opts:"Опции и цена", options:"Опции", est:"Оценка", pickup:"Запрошен трансфер",
+    subj:"Ваш запрос в SARE получен", hello:"Здравствуйте,", thanks:"Спасибо за ваш запрос. Мы его получили и очень скоро свяжемся с вами, обычно в течение нескольких часов, чтобы подтвердить наличие и уточнить детали.", recap:"Сводка", estNote:"Ориентировочная оценка. Окончательную стоимость подтвердит ваш менеджер.", next:"Что дальше?", steps:["Мы проверяем наличие катера и капитана из нашей команды.","Седрик или Ребекка свяжется с вами, чтобы продумать ваш день.","После подтверждения мы пришлём ссылку для бронирования."], reach:"Есть вопросы? Ваши менеджеры на связи:", pdf:"Сводка во вложении в формате PDF.", sign:"До встречи в море,", team:"Команда SARE" },
+  pt: { loc:"pt-BR", charter:"Solicitação · Passeio de um dia", tender:"Solicitação · Tender yacht", client:"Cliente", name:"Nome", role:"Função", contact:"Contato", lang:"Idioma", yacht:"Iate", length:"Comprimento", anchor:"Ancoragem", period:"Período", from:"De", to:"Até", guests:"Convidados", services:"Serviços", asked:"Solicitados", msg:"Mensagem", outing:"Seu dia", formula:"Fórmula", date:"Data", dep:"Partida", occ:"Ocasião", opts:"Opções e valor", options:"Opções", est:"Estimativa", pickup:"Busca solicitada",
+    subj:"Recebemos sua solicitação SARE", hello:"Olá", thanks:"Obrigado pela sua solicitação. Nós a recebemos e responderemos muito em breve, normalmente em poucas horas, para confirmar a disponibilidade e acertar os detalhes.", recap:"Resumo", estNote:"Estimativa indicativa. O orçamento final será confirmado pelo seu handler.", next:"E agora?", steps:["Verificamos a disponibilidade do barco e de um capitão da nossa frota.","Cédric ou Rebecca entra em contato para preparar o seu dia.","Após a confirmação, enviamos o link de reserva."], reach:"Alguma dúvida? Fale diretamente com seus handlers:", pdf:"Seu resumo está anexado em PDF.", sign:"Até breve no mar,", team:"Equipe SARE" },
+  nl: { loc:"nl-NL", charter:"Aanvraag · Dagcharter", tender:"Aanvraag · Tender yacht", client:"Gast", name:"Naam", role:"Functie", contact:"Contact", lang:"Taal", yacht:"Jacht", length:"Lengte", anchor:"Ankerplaats", period:"Periode", from:"Van", to:"Tot", guests:"Gasten", services:"Diensten", asked:"Gevraagd", msg:"Bericht", outing:"Uw dag", formula:"Formule", date:"Datum", dep:"Vertrek", occ:"Gelegenheid", opts:"Opties & tarief", options:"Opties", est:"Schatting", pickup:"Ophalen gevraagd",
+    subj:"Uw SARE-aanvraag is ontvangen", hello:"Beste", thanks:"Dank u voor uw aanvraag. We hebben die ontvangen en nemen zeer snel contact met u op, meestal binnen enkele uren, om de beschikbaarheid te bevestigen en de details af te ronden.", recap:"Overzicht", estNote:"Indicatieve schatting. Uw handler bevestigt de definitieve offerte.", next:"Hoe nu verder?", steps:["We controleren de beschikbaarheid van de boot en een kapitein uit onze vloot.","Cédric of Rebecca neemt contact op om uw dag samen te stellen.","Na bevestiging sturen we u de boekingslink."], reach:"Vragen? Uw handlers zijn direct bereikbaar:", pdf:"Uw overzicht is als pdf bijgevoegd.", sign:"Tot snel op zee,", team:"Het SARE-team" },
+};
+const HANDLERS = [["Cédric", "+1 954 955 1740"], ["Rebecca", "+1 954 661 4414"]];
+const tl = l => T[l] || T.en;
 const LANG_NAMES = { en: "English", fr: "Français", es: "Español", ru: "Русский", pt: "Português", nl: "Nederlands" };
 const eur = n => n == null || n === "" ? "" : new Intl.NumberFormat("fr-FR", { style: "currency", currency: "EUR", maximumFractionDigits: 0 }).format(Number(n)).replace(/[\u202f\u00a0]/g, " ");
-const fdate = d => { if (!d) return ""; const x = new Date(d + (String(d).length <= 10 ? "T12:00:00" : "")); return isNaN(x) ? String(d) : x.toLocaleDateString("fr-FR", { weekday: "long", day: "numeric", month: "long", year: "numeric" }); };
+const fdate = (d, loc = "fr-FR") => { if (!d) return ""; const x = new Date(d + (String(d).length <= 10 ? "T12:00:00" : "")); return isNaN(x) ? String(d) : x.toLocaleDateString(loc, { weekday: "long", day: "numeric", month: "long", year: "numeric" }); };
 const esc = s => String(s ?? "").replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
 const list = v => Array.isArray(v) ? v.filter(Boolean).join(", ") : (v || "");
 
-export function rows(r) {
+export function rows(r, l = "fr") {
+  const t = tl(l), fd = d => fdate(d, t.loc);
   const contact = r.email || r.contact || "";
   if (r.type === "tender") return {
-    title: "Demande · Tender yacht",
+    title: t.tender,
     groups: [
-      ["Client", [["Nom", r.name], ["Rôle", r.role], ["Contact", contact], ["Langue", LANG_NAMES[r.lang] || r.lang]]],
-      ["Yacht", [["Yacht", r.yacht], ["Longueur", r.length ? r.length + " m" : ""], ["Mouillage", r.anchor]]],
-      ["Période", [["Du", fdate(r.from)], ["Au", fdate(r.to)], ["Invités", r.guests]]],
-      ["Services", [["Demandés", list(r.services)], ["Message", r.notes]]],
-    ],
+      [t.client, [[t.name, r.name], [t.role, r.role], [t.contact, contact], [t.lang, LANG_NAMES[r.lang] || r.lang]]],
+      [t.yacht, [[t.yacht, r.yacht], [t.length, r.length ? r.length + " m" : ""], [t.anchor, r.anchor]]],
+      [t.period, [[t.from, fd(r.from)], [t.to, fd(r.to)], [t.guests, r.guests]]],
+      [t.services, [[t.asked, list(r.services)], [t.msg, r.notes]]],
+    ], big: `${fd(r.from)}${r.to ? "  →  " + fd(r.to) : ""}`,
   };
   return {
-    title: "Demande · Day charter",
+    title: t.charter,
     groups: [
-      ["Client", [["Nom", r.name], ["Contact", contact], ["Langue", LANG_NAMES[r.lang] || r.lang]]],
-      ["Sortie", [["Formule", r.formula], ["Date", fdate(r.date)], ["Invités", r.guests], ["Départ", r.port === "Pick-up requested" ? "Prise en charge demandée" : r.port], ["Occasion", r.occasion]]],
-      ["Options & tarif", [["Options", list(r.options)], ["Estimation", eur(r.estimate)], ["Message", r.notes]]],
-    ],
+      [t.client, [[t.name, r.name], [t.contact, contact], [t.lang, LANG_NAMES[r.lang] || r.lang]]],
+      [t.outing, [[t.formula, r.formula], [t.date, fd(r.date)], [t.guests, r.guests], [t.dep, r.port === "Pick-up requested" ? t.pickup : r.port], [t.occ, r.occasion]]],
+      [t.opts, [[t.options, list(r.options)], [t.est, eur(r.estimate)], [t.msg, r.notes]]],
+    ], big: `${r.formula || ""}  ·  ${fd(r.date)}`,
   };
 }
 
@@ -44,7 +62,7 @@ export function html(r, site) {
     const tr = items.filter(([, v]) => v !== "" && v != null).map(([k, v]) => `<tr><td style="padding:9px 0;width:130px;color:#7a7d86;font:12px Arial,sans-serif;vertical-align:top">${esc(k)}</td><td style="padding:9px 0;color:#25252c;font:15px Arial,sans-serif;vertical-align:top">${esc(v).replace(/\n/g, "<br>")}</td></tr>`).join("");
     return tr ? `<tr><td style="padding:26px 0 6px;font:600 10px Arial,sans-serif;letter-spacing:.24em;text-transform:uppercase;color:#54677f;border-bottom:1px solid #dcdad3">${esc(h)}</td></tr><tr><td><table width="100%" cellpadding="0" cellspacing="0" style="border-collapse:collapse">${tr}</table></td></tr>` : "";
   }).join("");
-  const big = r.type === "tender" ? `${fdate(r.from)}${r.to ? " → " + fdate(r.to) : ""}` : `${r.formula || ""} · ${fdate(r.date)}`;
+  const big = rows(r).big;
   return `<!doctype html><html><body style="margin:0;background:#efede8;padding:24px 12px">
 <table width="100%" cellpadding="0" cellspacing="0"><tr><td align="center">
 <table width="600" cellpadding="0" cellspacing="0" style="max-width:600px;width:100%;background:#ffffff">
@@ -64,9 +82,9 @@ export function text(r) {
   return `${title} · ${r.ref}\n\n` + groups.map(([h, items]) => `${h.toUpperCase()}\n` + items.filter(([, v]) => v !== "" && v != null).map(([k, v]) => `  ${k} : ${v}`).join("\n")).join("\n\n");
 }
 
-export function pdf(r) {
+export function pdf(r, l = "fr") {
   return new Promise(resolve => {
-    const { title, groups } = rows(r);
+    const { title, groups, big } = rows(r, l), t = tl(l);
     const doc = new PDFDocument({ size: "A4", margin: 0, info: { Title: `SARE ${r.ref}` } });
     doc.registerFont("Sans", path.join(FD, "DejaVuSans.ttf")); doc.registerFont("SansB", path.join(FD, "DejaVuSans-Bold.ttf")); doc.registerFont("Serif", path.join(FD, "DejaVuSerif.ttf"));
     const bufs = []; doc.on("data", b => bufs.push(b)); doc.on("end", () => resolve(Buffer.concat(bufs)));
@@ -75,13 +93,12 @@ export function pdf(r) {
     doc.fillColor("#f1efea").font("Serif").fontSize(32).text("S A R E", M, 34);
     doc.fillColor("#c8ccdb").font("Sans").fontSize(8).text("CARIBBEAN BREEZE", M, 74, { characterSpacing: 2.5 });
     doc.fillColor("#c8ccdb").fontSize(9).text(r.ref || "", W - M - 200, 40, { width: 200, align: "right" });
-    doc.text(new Date(r.receivedAt).toLocaleDateString("fr-FR"), W - M - 200, 56, { width: 200, align: "right" });
+    doc.text(new Date(r.receivedAt).toLocaleDateString(t.loc), W - M - 200, 56, { width: 200, align: "right" });
     let y = 140;
     doc.fillColor("#54677f").font("SansB").fontSize(8).text(title.toUpperCase(), M, y, { characterSpacing: 2 }); y += 20;
     doc.fillColor("#25252c").font("Serif").fontSize(26).text(r.name || "", M, y); y += 36;
-    const big = r.type === "tender" ? `${fdate(r.from)}${r.to ? "  →  " + fdate(r.to) : ""}` : `${r.formula || ""}  ·  ${fdate(r.date)}`;
     doc.fillColor("#54677f").font("Sans").fontSize(12).text(big, M, y); y += 22;
-    if (r.estimate) { doc.fillColor("#25252c").font("Serif").fontSize(20).text(eur(r.estimate), M, y); const w = doc.widthOfString(eur(r.estimate)); doc.font("Sans").fontSize(8).fillColor("#7a7d86").text("ESTIMATION", M + w + 10, y + 9, { characterSpacing: 1.5 }); y += 32; }
+    if (r.estimate) { doc.fillColor("#25252c").font("Serif").fontSize(20).text(eur(r.estimate), M, y); const w = doc.widthOfString(eur(r.estimate)); doc.font("Sans").fontSize(8).fillColor("#7a7d86").text(t.est.toUpperCase(), M + w + 10, y + 9, { characterSpacing: 1.5 }); y += 32; }
     for (const [h, items] of groups) {
       const it = items.filter(([, v]) => v !== "" && v != null); if (!it.length) continue;
       y += 14; doc.fillColor("#54677f").font("SansB").fontSize(8).text(h.toUpperCase(), M, y, { characterSpacing: 2 }); y += 14;
@@ -97,3 +114,36 @@ export function pdf(r) {
     doc.end();
   });
 }
+
+export function clientHtml(r) {
+  const l = T[r.lang] ? r.lang : "en", t = tl(l), { groups, big } = rows(r, l);
+  const first = String(r.name || "").trim().split(/\s+/)[0] || "";
+  const sec = groups.filter(([h]) => h !== t.client).map(([h, items]) => {
+    const tr = items.filter(([, v]) => v !== "" && v != null).map(([k, v]) => `<tr><td style="padding:8px 0;width:130px;color:#7a7d86;font:12px Arial,sans-serif;vertical-align:top">${esc(k)}</td><td style="padding:8px 0;color:#25252c;font:15px Arial,sans-serif;vertical-align:top">${esc(v).replace(/\n/g, "<br>")}</td></tr>`).join("");
+    return tr ? `<tr><td style="padding:22px 0 6px;font:600 10px Arial,sans-serif;letter-spacing:.24em;text-transform:uppercase;color:#54677f;border-bottom:1px solid #dcdad3">${esc(h)}</td></tr><tr><td><table width="100%" cellpadding="0" cellspacing="0">${tr}</table></td></tr>` : "";
+  }).join("");
+  const hs = HANDLERS.map(([n, p]) => `<a href="https://wa.me/${p.replace(/\D/g, "")}" style="display:inline-block;margin:0 8px 8px 0;padding:12px 18px;border:1px solid #25252c;color:#25252c;text-decoration:none;font:600 11px Arial,sans-serif;letter-spacing:.12em;text-transform:uppercase">${n} · WhatsApp</a>`).join("");
+  return `<!doctype html><html lang="${l}"><body style="margin:0;background:#efede8;padding:24px 12px">
+<table width="100%" cellpadding="0" cellspacing="0"><tr><td align="center">
+<table width="600" cellpadding="0" cellspacing="0" style="max-width:600px;width:100%;background:#ffffff">
+<tr><td style="background:#25252c;padding:28px 36px"><div style="font:300 30px Georgia,serif;letter-spacing:.12em;color:#f1efea">SARE</div><div style="font:10px Arial,sans-serif;letter-spacing:.3em;text-transform:uppercase;color:#c8ccdb;margin-top:4px">Caribbean Breeze</div></td></tr>
+<tr><td style="padding:34px 36px 6px">
+<div style="font:300 26px/1.3 Georgia,serif;color:#25252c">${esc(t.hello)} ${esc(first)},</div>
+<p style="font:15px/1.7 Arial,sans-serif;color:#3b3e46;margin:16px 0 0">${esc(t.thanks)}</p>
+<div style="margin-top:26px;padding:20px 22px;background:#f5f3ef"><div style="font:600 10px Arial,sans-serif;letter-spacing:.24em;text-transform:uppercase;color:#54677f">${esc(t.recap)} · ${esc(r.ref || "")}</div>
+<div style="font:300 20px Georgia,serif;color:#25252c;margin-top:8px">${esc(big)}</div>
+${r.estimate ? `<div style="font:300 22px Georgia,serif;color:#25252c;margin-top:8px">${eur(r.estimate)}</div><div style="font:12px Arial,sans-serif;color:#7a7d86;margin-top:4px">${esc(t.estNote)}</div>` : ""}</div>
+</td></tr>
+<tr><td style="padding:0 36px"><table width="100%" cellpadding="0" cellspacing="0">${sec}</table></td></tr>
+<tr><td style="padding:28px 36px 6px"><div style="font:600 10px Arial,sans-serif;letter-spacing:.24em;text-transform:uppercase;color:#54677f">${esc(t.next)}</div>
+<ol style="font:14px/1.7 Arial,sans-serif;color:#3b3e46;padding-left:18px;margin:10px 0 0">${t.steps.map(x => `<li>${esc(x)}</li>`).join("")}</ol></td></tr>
+<tr><td style="padding:22px 36px 8px"><p style="font:14px/1.6 Arial,sans-serif;color:#3b3e46;margin:0 0 12px">${esc(t.reach)}</p>${hs}</td></tr>
+<tr><td style="padding:14px 36px 34px"><p style="font:14px/1.6 Arial,sans-serif;color:#3b3e46;margin:0">${esc(t.sign)}<br><span style="font:300 18px Georgia,serif;color:#25252c">${esc(t.team)}</span></p><p style="font:12px Arial,sans-serif;color:#7a7d86;margin:16px 0 0">${esc(t.pdf)}</p></td></tr>
+<tr><td style="background:#25252c;padding:18px 36px;font:11px Arial,sans-serif;color:#c8ccdb">SARE · Caribbean Breeze · Porto Cupecoy, Sint Maarten · <a href="https://www.sare-exclusive.com" style="color:#c8ccdb">sare-exclusive.com</a></td></tr>
+</table></td></tr></table></body></html>`;
+}
+export function clientText(r) {
+  const l = T[r.lang] ? r.lang : "en", t = tl(l), { big } = rows(r, l);
+  return `${t.hello} ${String(r.name || "").split(" ")[0]},\n\n${t.thanks}\n\n${t.recap} · ${r.ref}\n${big}${r.estimate ? "\n" + eur(r.estimate) + " — " + t.estNote : ""}\n\n${t.next}\n${t.steps.map((x, i) => `${i + 1}. ${x}`).join("\n")}\n\n${t.reach}\n${HANDLERS.map(([n, p]) => `${n}: ${p}`).join("\n")}\n\n${t.sign}\n${t.team}`;
+}
+export const clientSubject = r => `${tl(r.lang).subj} · ${r.ref || ""}`;

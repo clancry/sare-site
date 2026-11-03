@@ -90,7 +90,14 @@ async function notify(r) {
       html: tpl.html(r, SITE), text: tpl.text(r) + `\n\n${SITE}/admin`,
       attachments: att ? [{ filename: `SARE-${r.ref || "demande"}.pdf`, content: att, contentType: "application/pdf" }] : [] });
   } catch (e) { console.error("mail error", e.message); }
+  const to = [r.email, r.contact].find(x => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(x || "").trim()));
+  if (to) try {
+    const att = await tpl.pdf(r, tpl_lang(r)).catch(() => null);
+    await mailer.sendMail({ from: MAIL_FROM, to: to.trim(), replyTo: NOTIFY_TO, subject: tpl.clientSubject(r), html: tpl.clientHtml(r), text: tpl.clientText(r),
+      attachments: att ? [{ filename: `SARE-${r.ref || "request"}.pdf`, content: att, contentType: "application/pdf" }] : [] });
+  } catch (e) { console.error("client mail error", e.message); }
 }
+const tpl_lang = r => ["en", "fr", "es", "ru", "pt", "nl"].includes(r.lang) ? r.lang : "en";
 function authed(req) {
   if (!ADMIN_PASSWORD) return false;
   const h = req.headers.authorization || "";
