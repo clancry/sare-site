@@ -4,7 +4,14 @@
   "private": true,
   "type": "module",
   "main": "server.js",
-  "engines": { "node": ">=20" },
-  "scripts": { "start": "node server.js" },
-  "dependencies": { "nodemailer": "6.9.16" }
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "start": "node server.js"
+  },
+  "dependencies": {
+    "nodemailer": "6.9.16",
+    "pdfkit": "0.15.2"
+  }
 }

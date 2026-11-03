@@ -4,6 +4,7 @@ import fs from "node:fs";
 import path from "node:path";
 import crypto from "node:crypto";
 import nodemailer from "nodemailer";
+import * as tpl from "./mailtpl.js";
 
 const PORT = process.env.PORT || 3000;
 const PUB = path.join(path.dirname(new URL(import.meta.url).pathname), "public");
@@ -80,9 +81,15 @@ function summary(r) {
 }
 async function notify(r) {
   if (!mailer) return;
-  const subj = `SARE · ${r.type || "request"} · ${r.name || ""} · ${r.date || r.from || ""} (${r.ref})`;
-  try { await mailer.sendMail({ from: MAIL_FROM, to: NOTIFY_TO, replyTo: /@/.test(r.email || r.contact || "") ? (r.email || r.contact) : undefined, subject: subj, text: summary(r) + `\n\nReceived ${r.receivedAt}\nAll requests: https://sare-exclusive.com/admin` }); }
-  catch (e) { console.error("mail error", e.message); }
+  const who = r.name || "";
+  const when = r.type === "tender" ? (r.from || "") : (r.date || "");
+  const subj = `SARE · Nouvelle demande ${r.type === "tender" ? "Tender" : "Day charter"} · ${who}${when ? " · " + when : ""}`;
+  try {
+    const att = await tpl.pdf(r).catch(e => { console.error("pdf", e.message); return null; });
+    await mailer.sendMail({ from: MAIL_FROM, to: NOTIFY_TO, replyTo: /@/.test(r.email || r.contact || "") ? (r.email || r.contact) : undefined, subject: subj,
+      html: tpl.html(r, SITE), text: tpl.text(r) + `\n\n${SITE}/admin`,
+      attachments: att ? [{ filename: `SARE-${r.ref || "demande"}.pdf`, content: att, contentType: "application/pdf" }] : [] });
+  } catch (e) { console.error("mail error", e.message); }
 }
 function authed(req) {
   if (!ADMIN_PASSWORD) return false;
