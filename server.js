@@ -56,7 +56,7 @@ async function stripe(pathname, params) {
 }
 async function createDepositLink(r, amountEur) {
   const label = [r.formula || r.type || "SARE", r.date].filter(Boolean).join(" · ");
-  const price = await stripe("prices", { currency: "eur", unit_amount: Math.round(amountEur * 100), product_data: { name: `Deposit · SARE Yacht Club · ${label}`.slice(0, 250) } });
+  const price = await stripe("prices", { currency: "eur", unit_amount: Math.round(amountEur * 100), product_data: { name: `Deposit · SARE Caribbean Breeze · ${label}`.slice(0, 250) } });
   const link = await stripe("payment_links", {
     line_items: { 0: { price: price.id, quantity: 1 } },
     metadata: { ref: keyOf(r), name: r.name || "" },

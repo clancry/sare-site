@@ -48,7 +48,7 @@ export function html(r, site) {
   return `<!doctype html><html><body style="margin:0;background:#efede8;padding:24px 12px">
 <table width="100%" cellpadding="0" cellspacing="0"><tr><td align="center">
 <table width="600" cellpadding="0" cellspacing="0" style="max-width:600px;width:100%;background:#ffffff">
-<tr><td style="background:#25252c;padding:28px 36px"><div style="font:300 30px Georgia,serif;letter-spacing:.12em;color:#f1efea">SARE</div><div style="font:10px Arial,sans-serif;letter-spacing:.3em;text-transform:uppercase;color:#c8ccdb;margin-top:4px">Yacht Club &amp; Boats</div></td></tr>
+<tr><td style="background:#25252c;padding:28px 36px"><div style="font:300 30px Georgia,serif;letter-spacing:.12em;color:#f1efea">SARE</div><div style="font:10px Arial,sans-serif;letter-spacing:.3em;text-transform:uppercase;color:#c8ccdb;margin-top:4px">Caribbean Breeze</div></td></tr>
 <tr><td style="padding:32px 36px 8px"><div style="font:600 10px Arial,sans-serif;letter-spacing:.24em;text-transform:uppercase;color:#54677f">${esc(title)} · ${esc(r.ref || "")}</div>
 <div style="font:300 28px/1.25 Georgia,serif;color:#25252c;margin-top:12px">${esc(r.name || "")}</div>
 <div style="font:16px Arial,sans-serif;color:#54677f;margin-top:6px">${esc(big)}</div>
@@ -73,7 +73,7 @@ export function pdf(r) {
     const W = doc.page.width, M = 56;
     doc.rect(0, 0, W, 110).fill("#25252c");
     doc.fillColor("#f1efea").font("Serif").fontSize(32).text("S A R E", M, 34);
-    doc.fillColor("#c8ccdb").font("Sans").fontSize(8).text("YACHT CLUB & BOATS", M, 74, { characterSpacing: 2.5 });
+    doc.fillColor("#c8ccdb").font("Sans").fontSize(8).text("CARIBBEAN BREEZE", M, 74, { characterSpacing: 2.5 });
     doc.fillColor("#c8ccdb").fontSize(9).text(r.ref || "", W - M - 200, 40, { width: 200, align: "right" });
     doc.text(new Date(r.receivedAt).toLocaleDateString("fr-FR"), W - M - 200, 56, { width: 200, align: "right" });
     let y = 140;
@@ -93,7 +93,7 @@ export function pdf(r) {
       }
     }
     doc.rect(0, doc.page.height - 50, W, 50).fill("#f5f3ef");
-    doc.fillColor("#7a7d86").font("Sans").fontSize(8).text("SARE Yacht Club & Boats · Porto Cupecoy, Sint Maarten · contact@sare-exclusive.com · sare-exclusive.com", M, doc.page.height - 30, { width: W - M * 2, align: "center" });
+    doc.fillColor("#7a7d86").font("Sans").fontSize(8).text("SARE Caribbean Breeze · Porto Cupecoy, Sint Maarten · contact@sare-exclusive.com · sare-exclusive.com", M, doc.page.height - 30, { width: W - M * 2, align: "center" });
     doc.end();
   });
 }
