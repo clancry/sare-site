@@ -12,6 +12,11 @@ const FILE = path.join(DATA_DIR, "requests.jsonl");
 const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || "";
 const NOTIFY_TO = process.env.NOTIFY_TO || "contact@sare-exclusive.com";
 const MAIL_FROM = process.env.MAIL_FROM || process.env.SMTP_USER || "SARE <no-reply@sare-exclusive.com>";
+const PAY_FILE = path.join(DATA_DIR, "payments.jsonl");
+const STRIPE_KEY = process.env.STRIPE_SECRET_KEY || "";
+const STRIPE_WH = process.env.STRIPE_WEBHOOK_SECRET || "";
+const DEPOSIT_PCT = Number(process.env.DEPOSIT_PCT || 30);
+const SITE = process.env.SITE_URL || "https://www.sare-exclusive.com";
 fs.mkdirSync(DATA_DIR, { recursive: true });
 
 const mailer = process.env.SMTP_HOST ? nodemailer.createTransport({
@@ -28,6 +33,43 @@ function limited(ip) { const now = Date.now(); const a = (hits.get(ip) || []).fi
 function readAll() {
   if (!fs.existsSync(FILE)) return [];
   return fs.readFileSync(FILE, "utf8").split("\n").filter(Boolean).map(l => { try { return JSON.parse(l); } catch { return null; } }).filter(Boolean);
+}
+const keyOf = r => r.ref || r.receivedAt;
+function readPays() {
+  const m = new Map();
+  if (!fs.existsSync(PAY_FILE)) return m;
+  for (const l of fs.readFileSync(PAY_FILE, "utf8").split("\n")) { if (!l) continue; try { const p = JSON.parse(l); m.set(p.key, { ...(m.get(p.key) || {}), ...p }); } catch {} }
+  return m;
+}
+const addPay = p => fs.appendFileSync(PAY_FILE, JSON.stringify({ ...p, at: new Date().toISOString() }) + "\n");
+async function stripe(pathname, params) {
+  const body = new URLSearchParams();
+  const add = (k, v) => { if (v == null || v === "") return; if (typeof v === "object") { for (const [kk, vv] of Object.entries(v)) add(`${k}[${kk}]`, vv); } else body.append(k, String(v)); };
+  for (const [k, v] of Object.entries(params || {})) add(k, v);
+  const r = await fetch("https://api.stripe.com/v1/" + pathname, { method: "POST", headers: { Authorization: "Bearer " + STRIPE_KEY, "Content-Type": "application/x-www-form-urlencoded" }, body, signal: AbortSignal.timeout(15000) });
+  const j = await r.json();
+  if (!r.ok) throw new Error(j.error?.message || ("Stripe " + r.status));
+  return j;
+}
+async function createDepositLink(r, amountEur) {
+  const label = [r.formula || r.type || "SARE", r.date].filter(Boolean).join(" · ");
+  const price = await stripe("prices", { currency: "eur", unit_amount: Math.round(amountEur * 100), product_data: { name: `Deposit · SARE Yacht Club · ${label}`.slice(0, 250) } });
+  const link = await stripe("payment_links", {
+    line_items: { 0: { price: price.id, quantity: 1 } },
+    metadata: { ref: keyOf(r), name: r.name || "" },
+    payment_intent_data: { description: `SARE deposit ${keyOf(r)} · ${r.name || ""}`.slice(0, 350), metadata: { ref: keyOf(r) } },
+    after_completion: { type: "redirect", redirect: { url: SITE + "/#paid" } },
+    billing_address_collection: "auto",
+  });
+  return link;
+}
+function verifyStripe(raw, header) {
+  if (!STRIPE_WH || !header) return false;
+  const parts = Object.fromEntries(header.split(",").map(x => x.split("=")));
+  const sig = header.split(",").filter(x => x.startsWith("v1=")).map(x => x.slice(3));
+  const exp = crypto.createHmac("sha256", STRIPE_WH).update(`${parts.t}.${raw}`).digest("hex");
+  if (Math.abs(Date.now() / 1000 - Number(parts.t)) > 600) return false;
+  return sig.some(s => s.length === exp.length && crypto.timingSafeEqual(Buffer.from(s), Buffer.from(exp)));
 }
 function summary(r) {
   const skip = new Set(["status", "lang", "createdAt"]);
@@ -48,11 +90,25 @@ function authed(req) {
   const a = Buffer.from(pass || ""), b = Buffer.from(ADMIN_PASSWORD);
   return a.length === b.length && crypto.timingSafeEqual(a, b);
 }
-function adminPage(list) {
-  const rows = list.slice().reverse().map(r => `<tr><td>${esc(r.receivedAt?.slice(0, 16).replace("T", " "))}</td><td><b>${esc(r.type)}</b></td><td>${esc(r.name)}<br><small>${esc(r.email || r.contact)}</small></td><td><pre>${esc(summary(r))}</pre></td></tr>`).join("");
+function adminPage(list, flash) {
+  const pays = readPays();
+  const money = n => n == null ? "" : new Intl.NumberFormat("fr-FR", { style: "currency", currency: "EUR", maximumFractionDigits: 0 }).format(n);
+  const rows = list.slice().reverse().map(r => {
+    const k = keyOf(r), p = pays.get(k) || {};
+    const est = Number(r.estimate) || 0, def = est ? Math.round(est * DEPOSIT_PCT / 100) : "";
+    let pay;
+    if (p.status === "paid") pay = `<span class="ok">✔ Acompte payé</span><br><small>${money(p.amount)} · ${esc((p.paidAt || "").slice(0, 16).replace("T", " "))}</small>`;
+    else if (p.url) {
+      const msg = encodeURIComponent(`Bonjour ${r.name || ""}, voici le lien pour régler l'acompte de votre réservation SARE (${money(p.amount)}) : ${p.url}`);
+      const tel = String(r.contact || r.phone || "").replace(/\D/g, "");
+      pay = `<span class="wait">En attente · ${money(p.amount)}</span><br><input readonly value="${esc(p.url)}" onclick="this.select();navigator.clipboard&&navigator.clipboard.writeText(this.value)"><br>
+      <a target="_blank" href="https://wa.me/${tel}?text=${msg}">WhatsApp</a> · <a href="mailto:${esc(r.email || "")}?subject=${encodeURIComponent("SARE · Acompte de réservation")}&body=${msg}">E-mail</a>`;
+    } else pay = STRIPE_KEY ? `<form method="post" action="/admin/pay"><input type="hidden" name="key" value="${esc(k)}"><input name="amount" type="number" min="1" step="1" value="${def}" placeholder="€" required> € <button>Créer le lien d'acompte</button>${est ? `<br><small>${DEPOSIT_PCT} % de ${money(est)}</small>` : ""}</form>` : `<small>Stripe non configuré</small>`;
+    return `<tr><td>${esc(r.receivedAt?.slice(0, 16).replace("T", " "))}</td><td><b>${esc(r.type)}</b></td><td>${esc(r.name)}<br><small>${esc(r.email || r.contact)}</small></td><td><pre>${esc(summary(r))}</pre></td><td class="pay">${pay}</td></tr>`;
+  }).join("");
   return `<!doctype html><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>SARE · Requests</title>
-<style>body{font:14px system-ui,sans-serif;margin:0;padding:24px;background:#f5f3ef;color:#1d1d1b}h1{font-weight:400}table{border-collapse:collapse;width:100%;background:#fff}td{border-bottom:1px solid #ddd;padding:10px;vertical-align:top}pre{white-space:pre-wrap;margin:0;font:12px ui-monospace,monospace}small{color:#666}.w{overflow-x:auto}</style>
-<h1>SARE · ${list.length} request${list.length === 1 ? "" : "s"}</h1><div class="w"><table>${rows || "<tr><td>No requests yet.</td></tr>"}</table></div>`;
+<style>body{font:14px system-ui,sans-serif;margin:0;padding:24px;background:#f5f3ef;color:#1d1d1b}h1{font-weight:400}table{border-collapse:collapse;width:100%;background:#fff}td{border-bottom:1px solid #ddd;padding:10px;vertical-align:top}pre{white-space:pre-wrap;margin:0;font:12px ui-monospace,monospace}small{color:#666}.w{overflow-x:auto}.pay{min-width:230px}.pay input{width:90px;padding:6px}.pay input[readonly]{width:220px;font-size:11px;margin:6px 0}.pay button{padding:7px 10px;background:#25252c;color:#fff;border:0;cursor:pointer}.ok{color:#1d7a3a;font-weight:600}.wait{color:#9a6b00;font-weight:600}.flash{padding:10px 14px;background:#fff;border-left:3px solid #25252c;margin-bottom:16px}</style>
+<h1>SARE · ${list.length} request${list.length === 1 ? "" : "s"}</h1>${flash ? `<div class="flash">${esc(flash)}</div>` : ""}<div class="w"><table>${rows || "<tr><td>No requests yet.</td></tr>"}</table></div>`;
 }
 
 
@@ -80,6 +136,35 @@ const server = http.createServer(async (req, res) => {
     notify(r);
     res.writeHead(200, { "Content-Type": "application/json" }); return res.end('{"ok":true}');
   }
+  if (req.method === "POST" && url.pathname === "/api/stripe/webhook") {
+    let raw = ""; for await (const c of req) { raw += c; if (raw.length > 1e6) break; }
+    if (!verifyStripe(raw, req.headers["stripe-signature"])) { res.writeHead(400); return res.end("bad signature"); }
+    let ev; try { ev = JSON.parse(raw); } catch { res.writeHead(400); return res.end(); }
+    if (ev.type === "checkout.session.completed" && ev.data?.object?.payment_status === "paid") {
+      const o = ev.data.object, linkId = o.payment_link;
+      const pays = readPays(); let key = null;
+      for (const [k, p] of pays) if (p.linkId === linkId) key = k;
+      if (key) {
+        const amount = (o.amount_total || 0) / 100;
+        addPay({ key, status: "paid", paidAt: new Date().toISOString(), paidAmount: amount, session: o.id, email: o.customer_details?.email });
+        stripe("payment_links/" + linkId, { active: "false" }).catch(e => console.error("deactivate", e.message));
+        const r = readAll().find(x => keyOf(x) === key) || {};
+        if (mailer) mailer.sendMail({ from: MAIL_FROM, to: NOTIFY_TO, subject: `SARE · Acompte reçu · ${r.name || ""} · ${amount} € (${key})`, text: `Acompte de ${amount} € reçu pour ${r.name || ""} (${r.formula || r.type || ""} ${r.date || ""}).\n\nhttps://sare-exclusive.com/admin` }).catch(e => console.error("mail", e.message));
+      }
+    }
+    res.writeHead(200, { "Content-Type": "application/json" }); return res.end('{"received":true}');
+  }
+  if (req.method === "POST" && url.pathname === "/admin/pay") {
+    if (!authed(req)) { res.writeHead(401, { "WWW-Authenticate": 'Basic realm="SARE"' }); return res.end("Login required"); }
+    let body = ""; for await (const c of req) { body += c; if (body.length > 5000) break; }
+    const f = new URLSearchParams(body), key = f.get("key"), amount = Number(f.get("amount"));
+    const r = readAll().find(x => keyOf(x) === key);
+    let flash;
+    if (!r || !(amount > 0) || !STRIPE_KEY) flash = "Impossible de créer le lien (demande ou montant invalide).";
+    else try { const link = await createDepositLink(r, amount); addPay({ key, linkId: link.id, url: link.url, amount, status: "pending" }); flash = `Lien d'acompte créé pour ${r.name} : ${link.url}`; }
+    catch (e) { console.error("stripe", e.message); flash = "Erreur Stripe : " + e.message; }
+    res.writeHead(200, { "Content-Type": "text/html; charset=utf-8", "Cache-Control": "no-store" }); return res.end(adminPage(readAll(), flash));
+  }
   if (url.pathname === "/admin" || url.pathname === "/admin.json") {
     if (!authed(req)) { res.writeHead(401, { "WWW-Authenticate": 'Basic realm="SARE"' }); return res.end("Login required"); }
     const list = readAll();
@@ -101,4 +186,4 @@ const server = http.createServer(async (req, res) => {
   res.writeHead(200, { "Content-Type": TYPES[ext] || "application/octet-stream", "Cache-Control": ext === ".html" ? "no-cache" : "public, max-age=604800", "X-Content-Type-Options": "nosniff" });
   fs.createReadStream(f).pipe(res);
 });
-server.listen(PORT, () => console.log("SARE listening on", PORT, "mail:", mailer ? "on" : "off"));
+server.listen(PORT, () => console.log("SARE listening on", PORT, "mail:", mailer ? "on" : "off", "stripe:", STRIPE_KEY ? (STRIPE_KEY.startsWith("sk_live") ? "live" : "test") : "off"));
