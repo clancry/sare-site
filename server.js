@@ -3,6 +3,7 @@ import http from "node:http";
 import fs from "node:fs";
 import path from "node:path";
 import crypto from "node:crypto";
+import zlib from "node:zlib";
 import nodemailer from "nodemailer";
 import * as tpl from "./mailtpl.js";
 import * as admin from "./admin.js";
@@ -17,6 +18,21 @@ const NOTIFY_TO = process.env.NOTIFY_TO || "contact@sare-exclusive.com";
 const MAIL_FROM = process.env.MAIL_FROM || process.env.SMTP_USER || "SARE <no-reply@sare-exclusive.com>";
 const HEADS = JSON.parse(fs.readFileSync(path.join(path.dirname(new URL(import.meta.url).pathname), "heads.json"), "utf8"));
 const BODY = fs.readFileSync(path.join(PUB, "_body.html"), "utf8");
+const I18N_DIR = path.join(PUB, "i18n"), LJSON = {};
+for (const l of ["en", "fr", "es", "ru", "pt", "nl"]) { try { LJSON[l] = fs.readFileSync(path.join(I18N_DIR, l + ".json"), "utf8"); } catch {} }
+const bodyFor = l => BODY.replace("__I18NDATA__", () => "{" + ['"en":' + LJSON.en, l !== "en" && LJSON[l] ? `"${l}":` + LJSON[l] : ""].filter(Boolean).join(",").replace(/<\//g, "<\\/") + "}");
+const PAGE_CACHE = new Map();
+function sendPage(req, res, key) {
+  const enc = String(req.headers["accept-encoding"] || ""), kind = /\bbr\b/.test(enc) ? "br" : /gzip/.test(enc) ? "gzip" : "";
+  let c = PAGE_CACHE.get(key + "|" + kind);
+  if (!c) {
+    const l = (key.match(/^\/(fr|es|ru|pt|nl)(\/|$)/) || [, "en"])[1], raw = Buffer.from(HEADS[key] + bodyFor(l));
+    c = kind === "br" ? zlib.brotliCompressSync(raw, { params: { [zlib.constants.BROTLI_PARAM_QUALITY]: 9 } }) : kind === "gzip" ? zlib.gzipSync(raw, { level: 9 }) : raw;
+    PAGE_CACHE.set(key + "|" + kind, c);
+  }
+  const h = { "Content-Type": "text/html; charset=utf-8", "Cache-Control": "no-cache", "Vary": "Accept-Encoding" }; if (kind) h["Content-Encoding"] = kind;
+  res.writeHead(200, h); res.end(c);
+}
 const PAY_FILE = path.join(DATA_DIR, "payments.jsonl");
 const STRIPE_KEY = process.env.STRIPE_SECRET_KEY || "";
 const STRIPE_WH = process.env.STRIPE_WEBHOOK_SECRET || "";
@@ -30,7 +46,7 @@ const mailer = process.env.SMTP_HOST ? nodemailer.createTransport({
   auth: { user: process.env.SMTP_USER, pass: process.env.SMTP_PASS },
 }) : null;
 
-const TYPES = { ".html": "text/html; charset=utf-8", ".jpg": "image/jpeg", ".jpeg": "image/jpeg", ".png": "image/png", ".svg": "image/svg+xml", ".ico": "image/x-icon", ".txt": "text/plain; charset=utf-8", ".xml": "application/xml", ".pdf": "application/pdf" };
+const TYPES = { ".html": "text/html; charset=utf-8", ".jpg": "image/jpeg", ".jpeg": "image/jpeg", ".png": "image/png", ".svg": "image/svg+xml", ".ico": "image/x-icon", ".txt": "text/plain; charset=utf-8", ".xml": "application/xml", ".pdf": "application/pdf", ".json": "application/json; charset=utf-8" };
 const esc = s => String(s ?? "").replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
 const hits = new Map();
 function limited(ip) { const now = Date.now(); const a = (hits.get(ip) || []).filter(t => now - t < 3600e3); a.push(now); hits.set(ip, a); return a.length > 20; }
@@ -219,10 +235,18 @@ const server = http.createServer(async (req, res) => {
     if (/^\/(fr|es|ru|pt|nl)$/.test(lp) && p !== lp + "/") { res.writeHead(301, { Location: lp + "/" + url.search }); return res.end(); }
     const key = HEADS[p] ? p : (HEADS[lp] ? lp : null);
     if (key && key !== p) { res.writeHead(301, { Location: key + url.search }); return res.end(); }
-    if (key) { res.writeHead(200, { "Content-Type": "text/html; charset=utf-8", "Cache-Control": "no-cache" }); return res.end(HEADS[key] + BODY); }
+    if (key) return sendPage(req, res, key);
     res.writeHead(301, { Location: "/" }); return res.end();
   }
   if (url.pathname === "/_body.html") { res.writeHead(404); return res.end("Not found"); }
+  if (url.pathname === "/" && HEADS["/"]) return sendPage(req, res, "/");
+  const lj = url.pathname.match(/^\/i18n\/(en|fr|es|ru|pt|nl)\.json$/);
+  if (lj && LJSON[lj[1]]) {
+    const enc = String(req.headers["accept-encoding"] || ""), kind = /\bbr\b/.test(enc) ? "br" : /gzip/.test(enc) ? "gzip" : "", ck = "i18n:" + lj[1] + "|" + kind;
+    let c = PAGE_CACHE.get(ck); if (!c) { const raw = Buffer.from(LJSON[lj[1]]); c = kind === "br" ? zlib.brotliCompressSync(raw) : kind === "gzip" ? zlib.gzipSync(raw) : raw; PAGE_CACHE.set(ck, c); }
+    const h = { "Content-Type": "application/json; charset=utf-8", "Cache-Control": "public, max-age=31536000, immutable", "Vary": "Accept-Encoding" }; if (kind) h["Content-Encoding"] = kind;
+    res.writeHead(200, h); return res.end(c);
+  }
   let p = decodeURIComponent(url.pathname); if (p === "/" || !path.extname(p)) p = "/index.html";
   const f = path.join(PUB, path.normalize(p).replace(/^(\.\.[/\\])+/, ""));
   if (!f.startsWith(PUB) || !fs.existsSync(f)) { res.writeHead(404); return res.end("Not found"); }
