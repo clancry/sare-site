@@ -32,6 +32,7 @@ h1{font-size:34px}h2{font-size:24px}h3{font-size:19px}
 .side nav a{display:flex;align-items:center;gap:12px;padding:10px 12px;text-decoration:none;font-size:13px;color:#cfd2db;border-radius:2px}
 .side nav a:hover{background:var(--hull-2);color:#fff}.side nav a.on{background:#3a3a44;color:#fff}
 .side nav a .n{margin-left:auto;background:var(--mist);color:var(--hull);font-size:10px;font-weight:600;padding:1px 7px;border-radius:9px}
+.site-link{margin-top:14px;display:block;padding:10px 12px;font-size:12px;color:var(--mist);text-decoration:none;border:1px solid #3a3a44;text-align:center;letter-spacing:.06em}.site-link:hover{color:#fff;border-color:var(--mist)}
 .side .who{margin-top:auto;padding:14px 12px;border-top:1px solid #3a3a44;font-size:12px;color:var(--mist)}
 .side .who b{display:block;color:#fff;font-weight:500;font-size:13px}
 .main{padding:32px 40px 60px;min-width:0}
@@ -210,10 +211,11 @@ function render(){
   const v=VIEWS();if(!v.some(x=>x[0]===S.view))S.view=v[0][0];
   const newReq=(S.data.requests||[]).filter(r=>!r.archived).length;
   const nav=h("nav",{},v.map(([k,l,i])=>h("a",{href:"#"+k,class:S.view===k?"on":"",onclick:e=>{e.preventDefault();go(k)}},svg(i),l,k==="req"&&newReq?h("span",{class:"n"},newReq):null)));
-  const side=h("aside",{class:"side"},h("div",{class:"brand"},"SARE",h("small",{},"CARIBBEAN BREEZE")),nav,
+  const side=h("aside",{class:"side"},h("a",{class:"brand",href:"/",target:"_blank",rel:"noopener",title:"Voir le site",style:"text-decoration:none"},"SARE",h("small",{},"CARIBBEAN BREEZE")),nav,
+    h("a",{class:"site-link",href:"/",target:"_blank",rel:"noopener"},"↗ Voir le site"),
     h("div",{class:"who"},h("b",{},S.data.me.name||S.data.me.email),ROLE[role()]));
   const tabs=h("nav",{class:"tabbar"},v.filter(x=>role()==="captain"||["dash","cal","book","req","me"].includes(x[0])).map(([k,l,i])=>h("a",{href:"#"+k,class:S.view===k?"on":"",onclick:e=>{e.preventDefault();go(k)}},svg(i),(l==="Mes sorties"?"Sorties":l==="Tableau de bord"?"Accueil":l.split(" ")[0]))));
-  const main=h("main",{class:"main"},h("div",{class:"mtop"},h("div",{class:"brand"},"SARE"),h("span",{class:"small",style:"color:var(--mist)"},ROLE[role()])));
+  const main=h("main",{class:"main"},h("div",{class:"mtop"},h("a",{class:"brand",href:"/",target:"_blank",rel:"noopener",style:"text-decoration:none"},"SARE ",h("span",{style:"font:500 10px var(--body);letter-spacing:.1em;color:var(--mist);vertical-align:middle"},"↗ SITE")),h("span",{class:"small",style:"color:var(--mist)"},ROLE[role()])));
   const fn={dash:role()==="captain"?viewCaptainDash:viewDash,cal:viewCal,book:viewBookings,req:viewRequests,clients:viewClients,maint:viewMaint,exp:viewExpenses,team:viewTeam,me:viewMe}[S.view];
   main.append(...[].concat(fn()).flat(9).filter(x=>x!=null&&x!==false));
   // extra mobile links for owner sections hidden from tabbar
