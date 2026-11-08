@@ -55,7 +55,7 @@ function viewBooking(b, u) {
   return o;
 }
 function bundle(u) {
-  const out = { me: pubUser(u), roles: ROLES };
+  const out = { me: { ...pubUser(u), ical: u.icalToken ? `${ctx.SITE}/api/ical/${u.icalToken}.ics` : "" }, roles: ROLES };
   const staff = db.users.filter(x => x.active !== false).map(x => ({ id: x.id, name: x.name, role: x.role, phone: x.phone || "" }));
   out.staff = staff;
   out.blocks = db.blocks;
@@ -105,6 +105,35 @@ export function busyDays() {
   for (const b of db.bookings) if (BUSY.has(b.status) && b.date) for (const d of days(b.date, b.endDate)) if (d >= today) s.add(d);
   for (const b of db.blocks) if (b.date) for (const d of days(b.date, b.endDate)) if (d >= today) s.add(d);
   return [...s].sort();
+}
+
+
+/* ---------------- iCalendar feed ---------------- */
+const icsEsc = s => String(s ?? "").replace(/\\/g, "\\\\").replace(/;/g, "\\;").replace(/,/g, "\\,").replace(/\r?\n/g, "\\n");
+const fold = l => { const out = []; let x = l; while (Buffer.byteLength(x) > 74) { let i = 74; while (Buffer.byteLength(x.slice(0, i)) > 74) i--; out.push(x.slice(0, i)); x = " " + x.slice(i); } out.push(x); return out.join("\r\n"); };
+const ymd = d => d.replace(/-/g, "");
+const nextDay = d => { const x = new Date(d + "T12:00:00Z"); x.setUTCDate(x.getUTCDate() + 1); return x.toISOString().slice(0, 10); };
+const utc = (d, t) => { const x = new Date(`${d}T${t}:00-04:00`); return x.toISOString().replace(/[-:]/g, "").replace(/\.\d{3}/, ""); }; // Caribbean time (AST, UTC-4, no DST)
+const TYPE_FR = { charter: "Day charter", tender: "Tender", transfer: "Transfert", voyage: "Voyage", other: "Sortie" };
+function ics(u) {
+  const L = ["BEGIN:VCALENDAR", "VERSION:2.0", "PRODID:-//SARE Caribbean Breeze//Back office//FR", "CALSCALE:GREGORIAN", "METHOD:PUBLISH", "X-WR-CALNAME:SARE · " + (u.role === "captain" ? "Mes sorties" : "Planning"), "X-WR-TIMEZONE:America/Lower_Princes", "REFRESH-INTERVAL;VALUE=DURATION:PT1H", "X-PUBLISHED-TTL:PT1H"];
+  const stamp = new Date().toISOString().replace(/[-:]/g, "").replace(/\.\d{3}/, "");
+  const list = db.bookings.filter(b => b.date && b.status !== "cancelled" && (u.role !== "captain" || b.captainId === u.id));
+  for (const b0 of list) {
+    const b = viewBooking(b0, u), c = b.client || {};
+    const summary = `${b.status === "option" ? "[Option] " : ""}${b.title || TYPE_FR[b.type] || "Sortie"}${c.name ? " · " + c.name : ""}${b.guests ? " · " + b.guests + " pers." : ""}`;
+    const desc = [b.ref, b.start && b.end ? `${b.start} – ${b.end}` : "", b.pickup ? "Prise en charge : " + b.pickup : "", b.occasion ? "Occasion : " + b.occasion : "", (b.options || []).length ? "Options : " + b.options.join(", ") : "",
+      c.phone ? "Client : " + [c.name, c.phone].filter(Boolean).join(" ") : "", u.role !== "captain" && c.email ? "E-mail : " + c.email : "", u.role !== "captain" && b0.price ? `Prix : ${b0.price} €` : "",
+      b.itinerary ? "Programme : " + b.itinerary : "", b.crewNotes ? "Notes : " + b.crewNotes : "", `${ctx.SITE}/admin`].filter(Boolean).join("\n");
+    L.push("BEGIN:VEVENT", `UID:${b.id}@sare-exclusive.com`, `DTSTAMP:${stamp}`);
+    const multi = b.endDate && b.endDate > b.date;
+    if (b.start && !multi) { L.push(`DTSTART:${utc(b.date, b.start)}`, `DTEND:${utc(b.date, b.end && b.end > b.start ? b.end : b.start)}`); }
+    else { L.push(`DTSTART;VALUE=DATE:${ymd(b.date)}`, `DTEND;VALUE=DATE:${ymd(nextDay(b.endDate || b.date))}`); }
+    L.push(fold("SUMMARY:" + icsEsc(summary)), fold("DESCRIPTION:" + icsEsc(desc)), b.pickup ? fold("LOCATION:" + icsEsc(b.pickup)) : "", `STATUS:${b.status === "option" ? "TENTATIVE" : "CONFIRMED"}`, "END:VEVENT");
+  }
+  for (const k of db.blocks) if (k.date) L.push("BEGIN:VEVENT", `UID:block-${k.id}@sare-exclusive.com`, `DTSTAMP:${stamp}`, `DTSTART;VALUE=DATE:${ymd(k.date)}`, `DTEND;VALUE=DATE:${ymd(nextDay(k.endDate || k.date))}`, fold("SUMMARY:" + icsEsc("⛔ Indisponible" + (u.role !== "captain" && k.reason ? " · " + k.reason : ""))), "TRANSP:TRANSPARENT", "END:VEVENT");
+  L.push("END:VCALENDAR");
+  return L.filter(Boolean).join("\r\n") + "\r\n";
 }
 
 /* ---------------- mail ---------------- */
@@ -157,6 +186,12 @@ export function bookingForKey(key) { return key?.startsWith("bk:") ? db.bookings
 export async function handle(req, res, url, ip) {
   const p = url.pathname;
   if (p === "/api/availability") { res.writeHead(200, { "Content-Type": "application/json", "Cache-Control": "public, max-age=300" }); res.end(JSON.stringify({ busy: busyDays() })); return true; }
+  const ic = p.match(/^\/api\/ical\/([\w-]{20,})\.ics$/);
+  if (ic) {
+    const u = db.users.find(x => x.icalToken === ic[1] && x.active !== false);
+    if (!u) { res.writeHead(404); res.end("Not found"); return true; }
+    res.writeHead(200, { "Content-Type": "text/calendar; charset=utf-8", "Cache-Control": "no-cache", "Content-Disposition": 'inline; filename="sare.ics"' }); res.end(ics(u)); return true;
+  }
   if (!p.startsWith("/api/admin/")) return false;
   const m = req.method;
   reqProto = String(req.headers["x-forwarded-proto"] || (req.socket.encrypted ? "https" : "http")).split(",")[0];
@@ -188,6 +223,11 @@ export async function handle(req, res, url, ip) {
       Object.assign(u, hash(String(b.next))); u.sv = (u.sv || 0) + 1; save(); setCookie(res, makeSession(u), 30 * 86400); return json(res, 200, { ok: true });
     }
 
+    if (p === "/api/admin/ical" && m === "POST") {
+      const b = await body(req);
+      u.icalToken = b.off ? null : crypto.randomBytes(24).toString("base64url"); save();
+      return json(res, 200, { ok: true, url: u.icalToken ? `${ctx.SITE}/api/ical/${u.icalToken}.ics` : "" });
+    }
     // users (owner only)
     if (p.startsWith("/api/admin/users")) {
       if (u.role !== "owner") return json(res, 403, { error: "forbidden" });

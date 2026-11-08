@@ -85,7 +85,7 @@ h1{font-size:34px}h2{font-size:24px}h3{font-size:19px}
 .cal-g .day.blocked{background:repeating-linear-gradient(135deg,#f6f4f0 0 6px,#eeebe5 6px 12px)}
 .cal-g .num{display:inline-grid;place-items:center;width:24px;height:24px;font-size:12px}
 .ev{display:block;font-size:11px;padding:3px 6px;margin-top:3px;border-left:3px solid var(--slate);background:#f1f3f7;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;cursor:pointer}
-.ev.option{border-color:var(--opt);background:#f3f0f9}.ev.confirmed{border-color:var(--ok);background:#ebf5ee}.ev.done{border-color:#999;background:#f0f0ee}.ev.block{border-color:#9a948a;background:transparent;color:var(--muted)}
+.ev.option{border-color:var(--opt);background:#f3f0f9}.ev.confirmed{border-color:var(--ok);background:#ebf5ee}.ev.done{border-color:#999;background:#f0f0ee}.ev.block{border-color:#9a948a;background:transparent;color:var(--muted)}.ev.req{border:1px dashed var(--warn);border-left:3px solid var(--warn);background:#fffaf0;color:var(--warn)}
 @media (max-width:700px){.cal-g .day{min-height:62px;padding:3px}.ev{font-size:0;height:6px;padding:0;margin-top:2px}.ev.block{display:none}}
 .legend{display:flex;gap:14px;flex-wrap:wrap;font-size:11px;color:var(--muted);margin-top:10px}
 .legend i{display:inline-block;width:10px;height:10px;margin-right:5px;vertical-align:-1px}
@@ -273,16 +273,18 @@ function viewCal(){
   const g=h("div",{class:"cal-g"},["Lun","Mar","Mer","Jeu","Ven","Sam","Dim"].map(d=>h("div",{class:"wd"},d)));
   for(let i=0;i<42;i++){const d=new Date(start);d.setUTCDate(start.getUTCDate()+i);const ds=d.toISOString().slice(0,10);
     const evs=B.filter(b=>b.date&&ds>=b.date&&ds<=(b.endDate||b.date)),bl=blocks.filter(b=>ds>=b.date&&ds<=(b.endDate||b.date));
+    const rq=(S.data.requests||[]).filter(r=>!r.archived&&(r.date||r.from)&&ds>=(r.date||r.from)&&ds<=(r.to||r.date||r.from));
     g.append(h("div",{class:"day"+(ds.slice(0,7)!==S.cal?" out":"")+(ds===t?" today":"")+(bl.length?" blocked":""),onclick:e=>{if(e.target.closest(".ev"))return;if(role()!=="captain")dayMenu(ds)}},
       h("span",{class:"num"},d.getUTCDate()),
       evs.map(b=>h("span",{class:"ev "+b.status,title:(b.title||"")+" "+((b.client||{}).name||""),onclick:()=>openBooking(b)},(b.start?b.start+" ":"")+((b.client||{}).name||b.title||TYPE[b.type]))),
-      bl.map(b=>h("span",{class:"ev block",onclick:()=>role()!=="captain"&&openBlock(b)},"⛔ "+(b.reason||"Indisponible")))));
+      bl.map(b=>h("span",{class:"ev block",onclick:()=>role()!=="captain"&&openBlock(b)},"⛔ "+(b.reason||"Indisponible"))),
+      rq.map(r=>h("span",{class:"ev req",title:"Demande à traiter",onclick:()=>openRequest(r)},"✉ "+(r.name||"")+(r.type==="tender"?" · Tender":"")))));
     if(i>=34&&d.getUTCMonth()!==mo-1&&i%7===6)break;}
   const shift=n=>{const d=new Date(Date.UTC(y,mo-1+n,1));S.cal=d.toISOString().slice(0,7);render()};
   const label=first.toLocaleDateString("fr-FR",{month:"long",year:"numeric",timeZone:"UTC"});
-  return [topBar(role()==="captain"?"Mes sorties":"Planning du bateau","Calendrier",role()!=="captain"?[h("button",{class:"btn line",onclick:()=>openBlock()},"Bloquer des dates"),h("button",{class:"btn",onclick:()=>openBooking()},"+ Réservation")]:null),
+  return [topBar(role()==="captain"?"Mes sorties":"Planning du bateau","Calendrier",h("button",{class:"btn ghost",onclick:()=>go("me")},"⇄ Google / iCal"),role()!=="captain"?[h("button",{class:"btn line",onclick:()=>openBlock()},"Bloquer des dates"),h("button",{class:"btn",onclick:()=>openBooking()},"+ Réservation")]:null),
     h("div",{class:"cal"},h("div",{class:"cal-h"},h("button",{class:"btn sm line",onclick:()=>shift(-1)},"←"),h("h2",{style:"text-transform:capitalize"},label),h("div",{class:"bar"},h("button",{class:"btn sm ghost",onclick:()=>{S.cal=t.slice(0,7);render()}},"Aujourd'hui"),h("button",{class:"btn sm line",onclick:()=>shift(1)},"→"))),g),
-    h("div",{class:"legend"},h("span",{},h("i",{style:"background:var(--opt)"}),"Option"),h("span",{},h("i",{style:"background:var(--ok)"}),"Confirmée"),h("span",{},h("i",{style:"background:#999"}),"Effectuée"),h("span",{},h("i",{style:"background:repeating-linear-gradient(135deg,#f6f4f0 0 3px,#d6d1c7 3px 6px)"}),"Indisponible"),
+    h("div",{class:"legend"},h("span",{},h("i",{style:"background:var(--opt)"}),"Option"),h("span",{},h("i",{style:"background:var(--ok)"}),"Confirmée"),h("span",{},h("i",{style:"background:#999"}),"Effectuée"),h("span",{},h("i",{style:"background:repeating-linear-gradient(135deg,#f6f4f0 0 3px,#d6d1c7 3px 6px)"}),"Indisponible"),role()!=="captain"?h("span",{},h("i",{style:"border:1px dashed var(--warn);background:#fffaf0"}),"Demande à traiter"):null,
       role()!=="captain"?h("span",{},"Les jours en option, confirmés ou bloqués apparaissent comme indisponibles sur le site."):null)];
 }
 function dayMenu(ds){openBooking({date:ds})}
@@ -504,7 +506,16 @@ function openInvite(){
 /* ---------- account ---------- */
 function viewMe(){
   const cur=h("input",{type:"password",autocomplete:"current-password"}),nw=h("input",{type:"password",autocomplete:"new-password"}),err=h("div",{class:"err"});
-  return [topBar(ROLE[role()],S.data.me.name||"Mon compte"),
+  const ical=S.data.me.ical;
+  const syncCard=h("div",{class:"card grid",style:"max-width:620px;margin-bottom:16px"},h("h3",{},"Synchroniser avec mon agenda"),
+    h("p",{class:"muted small",style:"margin:0"},role()==="captain"?"Vos sorties apparaissent automatiquement dans Google Agenda ou le calendrier de votre iPhone.":"Le planning (réservations et dates bloquées) apparaît automatiquement dans Google Agenda, Apple Calendrier ou Outlook. Mise à jour automatique (Google actualise en général toutes les quelques heures)."),
+    ical?[h("input",{class:"search",readonly:true,value:ical,onclick:e=>{e.target.select();navigator.clipboard?.writeText(ical);toast("Lien copié")}}),
+      h("div",{class:"bar"},h("a",{class:"btn sm",target:"_blank",href:"https://calendar.google.com/calendar/r?cid="+encodeURIComponent(ical.replace(/^https:/,"webcal:"))},"Ajouter à Google Agenda"),
+        h("a",{class:"btn sm line",href:ical.replace(/^https:/,"webcal:")},"Apple / iPhone / Outlook"),
+        h("button",{class:"btn sm ghost",onclick:async()=>{if(!confirm("Désactiver ce lien ? Les agendas abonnés ne seront plus mis à jour."))return;await api("ical",{body:{off:true}});load()}},"Désactiver")),
+      h("p",{class:"small muted",style:"margin:0"},"Ce lien est personnel : ne le partagez pas.")]
+    :h("div",{},h("button",{class:"btn",onclick:async()=>{await api("ical",{body:{}});await load()}},"Activer la synchronisation")));
+  return [topBar(ROLE[role()],S.data.me.name||"Mon compte"),syncCard,
     h("div",{class:"card grid",style:"max-width:460px"},h("div",{},h("div",{class:"eyebrow"},"Connecté"),h("div",{},S.data.me.email)),
       h("h3",{},"Changer mon mot de passe"),field("Mot de passe actuel",cur),field("Nouveau (8 caractères min.)",nw),err,
       h("div",{class:"bar"},h("button",{class:"btn",onclick:async()=>{err.textContent="";try{await api("password",{body:{current:cur.value,next:nw.value}});toast("Mot de passe modifié");cur.value=nw.value=""}catch(e){err.textContent=e.message}}},"Enregistrer"),
