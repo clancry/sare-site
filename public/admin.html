@@ -228,7 +228,7 @@ function bookingRow(b){
   return h("div",{class:"row",onclick:()=>openBooking(b)},
     h("div",{class:"d"},h("b",{},fd(b.date,{day:"numeric",month:"short"})),fd(b.date,{weekday:"long"})+(b.start?" · "+b.start:"")),
     h("div",{class:"t"},h("b",{},b.title||TYPE[b.type]||"Sortie"," · ",(b.client||{}).name||""),h("span",{},[b.guests?b.guests+" pers.":"",b.pickup,cap?"Cap. "+cap:"Capitaine à assigner"].filter(Boolean).join(" · "))),
-    h("div",{class:"r"},badge(b.status),role()!=="captain"&&b.price?h("div",{style:"margin-top:5px"},due>0?h("span",{class:"badge b-due"},"Reste "+eur(due)):h("span",{class:"badge b-paid"},"Soldé")):null));
+    h("div",{class:"r"},role()!=="captain"?h("button",{class:"x",title:"Supprimer",style:"font-size:15px;margin-right:6px;vertical-align:middle",onclick:async e=>{e.stopPropagation();if(!confirm(`Supprimer la réservation ${b.ref||""}${b.client?.name?" de "+b.client.name:""} ?`))return;await api("bookings/"+b.id,{method:"DELETE"});toast("Réservation supprimée");load()}},"🗑"):null,badge(b.status),role()!=="captain"&&b.price?h("div",{style:"margin-top:5px"},due>0?h("span",{class:"badge b-due"},"Reste "+eur(due)):h("span",{class:"badge b-paid"},"Soldé")):null));
 }
 function viewDash(){
   const B=S.data.bookings,t=today(),m=t.slice(0,7);
@@ -347,16 +347,23 @@ function openBooking(b0){
     const clash=S.data.bookings.find(x=>x.id!==b.id&&["option","confirmed"].includes(x.status)&&x.date&&F.date.value<=(x.endDate||x.date)&&(F.endDate.value||F.date.value)>=x.date);
     if(clash&&["option","confirmed"].includes(F.status.value)&&!confirm(`Attention : le bateau est déjà réservé ce jour-là (${clash.title||""} ${clash.client?.name||""}). Enregistrer quand même ?`))return null;
     try{const r=await api("bookings"+(b.id?"/"+b.id:""),{body:collect()});b.id=r.item.id;toast("Réservation enregistrée");await load();return r.item}catch(e){toast(e.message);return null}}
-  const actions=[h("button",{class:"btn",onclick:async()=>{if(await saveB())closePanel()}},"Enregistrer")];
+  async function sendConfirm(skipSave){const it=skipSave||await saveB();if(!it)return;
+    if(!F.cemail.value){toast("Ajoutez l'e-mail du client.");return}
+    try{const r=await api(`bookings/${it.id}/confirm`,{body:{deposit:F.deposit.value}});toast(r.deposit?"Confirmation envoyée avec le lien d'acompte":"Confirmation envoyée au client");await load();closePanel()}catch(e){toast(e.message)}}
+  const wasConfirmed=b.status==="confirmed";
+  const actions=[h("button",{class:"btn",onclick:async()=>{const becomes=F.status.value==="confirmed"&&!wasConfirmed;const it=await saveB();if(!it)return;
+    if(becomes&&F.cemail.value&&!b.confirmSentAt&&confirm("Réservation confirmée. Envoyer maintenant l'e-mail de confirmation au client"+(Number(F.deposit.value)>0?", avec le lien d'acompte":"")+" ?")){await sendConfirm(it);return}closePanel()}},"Enregistrer")];
   const extra=h("div",{class:"bar"},
     h("button",{class:"btn sm line",type:"button",onclick:async()=>{const it=await saveB();if(!it)return;const amt=prompt("Montant de l'acompte à demander (€) :",F.deposit.value||Math.round((Number(F.price.value)||0)*0.3)||"");if(!amt)return;
       try{const r=await api(`bookings/${it.id}/deposit`,{body:{amount:amt}});await load();linkBox.innerHTML="";linkBox.append(stripeBox({url:r.url,amount:Number(amt),status:"pending"},{...it,client:collect().client}));openBookingKeep(it.id)}catch(e){toast(e.message)}}},"Lien d'acompte Stripe"),
     h("button",{class:"btn sm line",type:"button",onclick:async()=>{const it=await saveB();if(!it)return;if(!F.captainId.value){toast("Assignez d'abord un capitaine.");return}try{const r=await api(`bookings/${it.id}/sheet`,{body:{}});toast(r.ok?"Fiche envoyée au capitaine":"E-mail non envoyé")}catch(e){toast(e.message)}}},"Envoyer la fiche au capitaine"),
+    h("button",{class:"btn sm",type:"button",onclick:()=>sendConfirm()},b.confirmSentAt?"Renvoyer la confirmation client":"Envoyer la confirmation au client"),
     F.cphone.value?h("a",{class:"btn sm line",href:waLink(F.cphone.value),target:"_blank"},"WhatsApp client"):null,
     F.cemail.value?h("a",{class:"btn sm line",href:"mailto:"+F.cemail.value},"E-mail client"):null,
-    !isNew?h("button",{class:"btn sm danger",type:"button",onclick:async()=>{if(!confirm("Supprimer définitivement cette réservation ?"))return;await api("bookings/"+b.id,{method:"DELETE"});closePanel();toast("Supprimée");load()}},"Supprimer"):null);
+    null);
+  if(!isNew)actions.unshift(h("button",{class:"btn sm danger",type:"button",onclick:async()=>{if(!confirm(`Supprimer définitivement la réservation ${b.ref||""}${b.client?.name?" de "+b.client.name:""} ?\n\nAstuce : pour garder l'historique, passez-la plutôt en « Annulée ».`))return;await api("bookings/"+b.id,{method:"DELETE"});closePanel();toast("Réservation supprimée");load()}},"Supprimer"));
   panel(isNew?"Nouvelle réservation":(b.title||TYPE[b.type]||"Réservation"),isNew?"Réservation":b.ref,[
-    extra,linkBox,
+    extra,b.confirmSentAt?h("div",{class:"small",style:"color:var(--ok)"},"✔ Confirmation envoyée au client le "+new Date(b.confirmSentAt).toLocaleString("fr-FR",{day:"numeric",month:"short",hour:"2-digit",minute:"2-digit"})):null,linkBox,
     h("fieldset",{},h("legend",{},"Prestation"),h("div",{class:"cols"},field("Statut",F.status),field("Type",F.type)),field("Intitulé",F.title),
       h("div",{class:"cols c4"},field("Date",F.date),field("Date de fin (option)",F.endDate),field("Départ",F.start),field("Retour",F.end)),
       h("div",{class:"cols c3"},field("Invités",F.guests),field("Prise en charge",F.pickup),field("Occasion",F.occasion)),field("Options",F.options)),
@@ -401,7 +408,8 @@ function openRequest(r){
     client:{name:r.name,email:/@/.test(contact)?contact:"",phone:/@/.test(contact)?"":contact,lang:r.lang,company:r.yacht||""},price:r.estimate||"",crewNotes:r.notes||"",requestKey:r.key})};
   panel(r.name||"Demande",(r.type==="tender"?"Tender":"Day charter")+" · "+(r.ref||""),[h("dl",{class:"kv"},kv),
     h("div",{class:"bar"},/@/.test(contact)?h("a",{class:"btn sm line",href:"mailto:"+contact},"Répondre par e-mail"):h("a",{class:"btn sm line",target:"_blank",href:waLink(contact)},"WhatsApp"))],
-    [h("button",{class:"btn sm line",onclick:async()=>{await api("requests/archive",{body:{key:r.key,archived:!r.archived}});closePanel();load()}},r.archived?"Remettre à traiter":"Marquer traitée"),h("button",{class:"btn",onclick:toBooking},"Créer la réservation")]);
+    [h("button",{class:"btn sm danger",onclick:async()=>{if(!confirm("Supprimer définitivement cette demande ?"))return;await api("requests/delete",{body:{key:r.key}});closePanel();toast("Demande supprimée");load()}},"Supprimer"),
+     h("button",{class:"btn sm line",onclick:async()=>{await api("requests/archive",{body:{key:r.key,archived:!r.archived}});closePanel();load()}},r.archived?"Remettre à traiter":"Marquer traitée"),h("button",{class:"btn",onclick:toBooking},"Créer la réservation")]);
 }
 
 /* ---------- clients ---------- */

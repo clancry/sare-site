@@ -3,6 +3,7 @@
 import fs from "node:fs";
 import path from "node:path";
 import crypto from "node:crypto";
+import * as tpl from "./mailtpl.js";
 
 const ROLES = ["owner", "concierge", "captain"];
 const COLLS = ["bookings", "maintenance", "expenses", "blocks"];
@@ -14,7 +15,7 @@ let ctx, FILE, db;
 /* ---------------- storage ---------------- */
 function load() {
   try { db = JSON.parse(fs.readFileSync(FILE, "utf8")); } catch { db = {}; }
-  db.meta ||= {}; db.users ||= []; db.archived ||= [];
+  db.meta ||= {}; db.users ||= []; db.archived ||= []; db.deletedReqs ||= [];
   for (const c of COLLS) db[c] ||= [];
   db.meta.secret ||= crypto.randomBytes(32).toString("hex");
 }
@@ -68,7 +69,8 @@ function bundle(u) {
   const pays = ctx.readPays();
   out.payments = Object.fromEntries([...pays].filter(([k]) => k.startsWith("bk:")).map(([k, v]) => [k.slice(3), v]));
   const archived = new Set(db.archived);
-  out.requests = ctx.readRequests().map(r => ({ ...r, key: ctx.keyOf(r), archived: archived.has(ctx.keyOf(r)) })).reverse();
+  const del = new Set(db.deletedReqs);
+  out.requests = ctx.readRequests().filter(r => !del.has(ctx.keyOf(r))).map(r => ({ ...r, key: ctx.keyOf(r), archived: archived.has(ctx.keyOf(r)) })).reverse();
   if (u.role === "owner") { out.maintenance = db.maintenance; out.expenses = db.expenses; out.users = db.users.map(pubUser); }
   return out;
 }
@@ -257,11 +259,33 @@ export async function handle(req, res, url, ip) {
       db.archived = b.archived ? [...new Set([...db.archived, k])] : db.archived.filter(x => x !== k); save(); return json(res, 200, { ok: true });
     }
 
+    if (p === "/api/admin/requests/delete" && m === "POST") {
+      if (u.role === "captain") return json(res, 403, { error: "forbidden" });
+      const b = await body(req); db.deletedReqs = [...new Set([...db.deletedReqs, str(b.key, 120)])]; save(); return json(res, 200, { ok: true });
+    }
     // booking actions
-    const ba = p.match(/^\/api\/admin\/bookings\/([\w-]+)\/(deposit|sheet)$/);
+    const ba = p.match(/^\/api\/admin\/bookings\/([\w-]+)\/(deposit|sheet|confirm)$/);
     if (ba && m === "POST") {
       if (u.role === "captain") return json(res, 403, { error: "forbidden" });
       const bk = db.bookings.find(x => x.id === ba[1]); if (!bk) return json(res, 404, { error: "not found" });
+      if (ba[2] === "confirm") {
+        const to = String(bk.client?.email || "").trim();
+        if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(to)) return json(res, 400, { error: "Ajoutez l'e-mail du client." });
+        if (!ctx.mailer) return json(res, 400, { error: "L'envoi d'e-mails n'est pas configuré." });
+        const b = await body(req);
+        const paid = (bk.payments || []).reduce((s, x) => s + (Number(x.amount) || 0), 0);
+        let link = null; const pay = ctx.readPays().get("bk:" + bk.id);
+        if (pay?.url && pay.status !== "paid") link = { url: pay.url, amount: pay.amount };
+        const want = num(b.deposit) ?? bk.deposit;
+        if (!link && b.withDeposit !== false && ctx.stripeReady() && want > 0 && paid < want) {
+          const l = await ctx.createDepositLink({ ref: "bk:" + bk.id, name: bk.client?.name, formula: bk.title || bk.type, date: bk.date }, want - paid);
+          ctx.addPay({ key: "bk:" + bk.id, linkId: l.id, url: l.url, amount: want - paid, status: "pending" }); link = { url: l.url, amount: want - paid };
+        }
+        const m2 = tpl.confirmEmail(bk, link); const att = await m2.pdf().catch(() => null);
+        await ctx.mailer.sendMail({ from: ctx.MAIL_FROM, to, replyTo: ctx.NOTIFY_TO, subject: m2.subject, html: m2.html, text: m2.text, attachments: att ? [{ filename: `SARE-${bk.ref}.pdf`, content: att, contentType: "application/pdf" }] : [] });
+        bk.confirmSentAt = now(); if (bk.status === "option") bk.status = "confirmed"; save();
+        return json(res, 200, { ok: true, deposit: !!link });
+      }
       if (ba[2] === "sheet") {
         const cap = db.users.find(x => x.id === bk.captainId); if (!cap) return json(res, 400, { error: "Aucun capitaine assigné." });
         return json(res, 200, { ok: await sheetMail(bk, cap) });
