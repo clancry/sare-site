@@ -1,0 +1,521 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="robots" content="noindex,nofollow">
+<meta name="theme-color" content="#25252c">
+<title>SARE · Back office</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 64 64%22%3E%3Crect width=%2264%22 height=%2264%22 fill=%22%2325252c%22/%3E%3Ctext x=%2232%22 y=%2244%22 font-family=%22Georgia%22 font-size=%2234%22 fill=%22%23f1efea%22 text-anchor=%22middle%22%3ES%3C/text%3E%3C/svg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@300;400;500;600&family=Cormorant+Garamond:wght@300;400&display=swap" rel="stylesheet">
+<style>
+:root{--hull:#25252c;--hull-2:#2f2f37;--slate:#54677f;--mist:#c8ccdb;--paper:#f6f4f0;--paper-2:#efede8;--card:#fff;--ink:#25252c;--muted:#7a7d86;--line:#e3e0d9;--ok:#2f7a4b;--warn:#a26a00;--bad:#a33a3a;--opt:#7b6aa8;
+--display:"Cormorant Garamond",Georgia,serif;--body:Montserrat,system-ui,sans-serif;--safe-b:env(safe-area-inset-bottom,0px)}
+*{box-sizing:border-box}[hidden]{display:none!important}
+html,body{margin:0;background:var(--paper);color:var(--ink);font:14px/1.5 var(--body);-webkit-font-smoothing:antialiased}
+button,input,select,textarea{font:inherit;color:inherit}
+a{color:inherit}
+h1,h2,h3{font-family:var(--display);font-weight:300;margin:0;line-height:1.15}
+h1{font-size:34px}h2{font-size:24px}h3{font-size:19px}
+.eyebrow{font-size:10px;letter-spacing:.24em;text-transform:uppercase;color:var(--slate);font-weight:600}
+.muted{color:var(--muted)}.small{font-size:12px}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;padding:10px 16px;border:1px solid var(--hull);background:var(--hull);color:#f1efea;font-size:11px;font-weight:600;letter-spacing:.14em;text-transform:uppercase;cursor:pointer;text-decoration:none;white-space:nowrap}
+.btn.line{background:transparent;color:var(--hull)}.btn.ghost{border-color:transparent;background:transparent;color:var(--slate)}.btn.danger{background:transparent;border-color:var(--bad);color:var(--bad)}
+.btn.sm{padding:7px 11px;font-size:10px}.btn:disabled{opacity:.5;cursor:default}
+/* layout */
+.app{display:grid;grid-template-columns:232px 1fr;min-height:100vh}
+.side{background:var(--hull);color:#e9e7e2;padding:26px 18px;position:sticky;top:0;height:100vh;display:flex;flex-direction:column;gap:4px}
+.brand{font-family:var(--display);font-size:30px;letter-spacing:.14em;color:#f1efea;padding:0 10px}
+.brand small{display:block;font:500 9px var(--body);letter-spacing:.3em;color:var(--mist);margin-top:2px}
+.side nav{margin-top:28px;display:grid;gap:2px}
+.side nav a{display:flex;align-items:center;gap:12px;padding:10px 12px;text-decoration:none;font-size:13px;color:#cfd2db;border-radius:2px}
+.side nav a:hover{background:var(--hull-2);color:#fff}.side nav a.on{background:#3a3a44;color:#fff}
+.side nav a .n{margin-left:auto;background:var(--mist);color:var(--hull);font-size:10px;font-weight:600;padding:1px 7px;border-radius:9px}
+.side .who{margin-top:auto;padding:14px 12px;border-top:1px solid #3a3a44;font-size:12px;color:var(--mist)}
+.side .who b{display:block;color:#fff;font-weight:500;font-size:13px}
+.main{padding:32px 40px 60px;min-width:0}
+.top{display:flex;align-items:flex-end;justify-content:space-between;gap:16px;margin-bottom:24px;flex-wrap:wrap}
+.top .actions{display:flex;gap:8px;flex-wrap:wrap}
+.tabbar{display:none}
+@media (max-width:900px){
+  .app{grid-template-columns:1fr}.side{display:none}
+  .main{padding:20px 16px calc(90px + var(--safe-b))}
+  h1{font-size:28px}
+  .mtop{display:flex!important}
+  .tabbar{display:flex;position:fixed;left:0;right:0;bottom:0;background:var(--hull);z-index:40;padding:6px 4px calc(6px + var(--safe-b));justify-content:space-around}
+  .tabbar a{flex:1;display:flex;flex-direction:column;align-items:center;gap:3px;color:#aeb2bd;text-decoration:none;font-size:10px;letter-spacing:.04em;padding:5px 2px}
+  .tabbar a.on{color:#fff}.tabbar svg{width:20px;height:20px}
+}
+.mtop{display:none;align-items:center;justify-content:space-between;background:var(--hull);color:#f1efea;margin:-20px -16px 18px;padding:14px 16px}
+.mtop .brand{font-size:24px;padding:0}
+/* cards */
+.card{background:var(--card);border:1px solid var(--line);padding:20px}
+.grid{display:grid;gap:14px}
+.kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:12px;margin-bottom:22px}
+.kpi{background:var(--card);border:1px solid var(--line);padding:16px 18px}
+.kpi .v{font-family:var(--display);font-size:30px;margin-top:6px;line-height:1}
+.kpi .s{font-size:11px;color:var(--muted);margin-top:6px}
+.two{display:grid;grid-template-columns:1.4fr 1fr;gap:16px;align-items:start}.two>.grid{align-content:start}@media (max-width:1100px){.two{grid-template-columns:1fr}}
+/* lists */
+.list{background:var(--card);border:1px solid var(--line)}
+.row{display:grid;grid-template-columns:110px 1fr auto;gap:14px;align-items:center;padding:13px 16px;border-bottom:1px solid var(--line);cursor:pointer}
+.row:last-child{border-bottom:0}.row:hover{background:#faf9f6}
+.row .d{font-size:12px;color:var(--muted)}.row .d b{display:block;font-size:15px;color:var(--ink);font-weight:500}
+.row .t{min-width:0}.row .t b{display:block;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.row .t span{font-size:12px;color:var(--muted)}
+.row .r{text-align:right;font-size:12px}
+@media (max-width:600px){.row{grid-template-columns:78px 1fr;}.row .r{grid-column:2;text-align:left}}
+.empty{padding:28px;text-align:center;color:var(--muted)}
+.badge{display:inline-block;font-size:10px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;padding:3px 8px;border-radius:2px;background:#eceae5;color:var(--slate)}
+.b-request{background:#eef1f6;color:var(--slate)}.b-option{background:#efeaf7;color:var(--opt)}.b-confirmed{background:#e6f2ea;color:var(--ok)}.b-done{background:#ecebe8;color:#6b6b6b}.b-cancelled{background:#f6e7e7;color:var(--bad)}
+.b-paid{background:#e6f2ea;color:var(--ok)}.b-due{background:#fbf1de;color:var(--warn)}
+.pills{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:14px}
+.pill{border:1px solid var(--line);background:var(--card);padding:6px 12px;font-size:12px;cursor:pointer}
+.pill.on{background:var(--hull);color:#fff;border-color:var(--hull)}
+.search{border:1px solid var(--line);background:var(--card);padding:8px 12px;min-width:220px}
+/* calendar */
+.cal{background:var(--card);border:1px solid var(--line)}
+.cal-h{display:flex;align-items:center;justify-content:space-between;padding:14px 16px;border-bottom:1px solid var(--line)}
+.cal-g{display:grid;grid-template-columns:repeat(7,minmax(0,1fr))}
+.cal-g .wd{font-size:10px;letter-spacing:.16em;text-transform:uppercase;color:var(--muted);padding:8px;border-bottom:1px solid var(--line);text-align:center}
+.cal-g .day{min-height:108px;border-right:1px solid var(--line);border-bottom:1px solid var(--line);padding:6px;cursor:pointer;position:relative;min-width:0}
+.cal-g .day:nth-child(7n){border-right:0}.cal-g .day.out{background:#faf9f6;color:#b5b3ad}
+.cal-g .day.today .num{background:var(--hull);color:#fff;border-radius:50%}
+.cal-g .day.blocked{background:repeating-linear-gradient(135deg,#f6f4f0 0 6px,#eeebe5 6px 12px)}
+.cal-g .num{display:inline-grid;place-items:center;width:24px;height:24px;font-size:12px}
+.ev{display:block;font-size:11px;padding:3px 6px;margin-top:3px;border-left:3px solid var(--slate);background:#f1f3f7;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;cursor:pointer}
+.ev.option{border-color:var(--opt);background:#f3f0f9}.ev.confirmed{border-color:var(--ok);background:#ebf5ee}.ev.done{border-color:#999;background:#f0f0ee}.ev.block{border-color:#9a948a;background:transparent;color:var(--muted)}
+@media (max-width:700px){.cal-g .day{min-height:62px;padding:3px}.ev{font-size:0;height:6px;padding:0;margin-top:2px}.ev.block{display:none}}
+.legend{display:flex;gap:14px;flex-wrap:wrap;font-size:11px;color:var(--muted);margin-top:10px}
+.legend i{display:inline-block;width:10px;height:10px;margin-right:5px;vertical-align:-1px}
+/* forms / modal */
+.ov{position:fixed;inset:0;background:rgba(20,22,28,.55);z-index:60;display:flex;justify-content:flex-end}
+.panel{background:var(--paper);width:min(720px,100%);height:100%;overflow:auto;padding:0 0 40px;animation:sl .25s ease}
+@keyframes sl{from{transform:translateX(30px);opacity:.6}}
+.panel-h{position:sticky;top:0;background:var(--paper);z-index:2;display:flex;align-items:center;justify-content:space-between;gap:12px;padding:18px 24px;border-bottom:1px solid var(--line)}
+.panel-b{padding:20px 24px;display:grid;gap:18px}
+fieldset{border:0;margin:0;padding:0;display:grid;gap:12px}
+legend{font-size:10px;letter-spacing:.24em;text-transform:uppercase;color:var(--slate);font-weight:600;padding:0;margin-bottom:4px;border-bottom:1px solid var(--line);width:100%;padding-bottom:6px}
+.f{display:grid;gap:5px}.f label{font-size:11px;color:var(--muted);letter-spacing:.04em}
+.f input,.f select,.f textarea{width:100%;border:1px solid var(--line);background:#fff;padding:10px 11px;border-radius:0;outline:0}
+.f input:focus,.f select:focus,.f textarea:focus{border-color:var(--slate)}
+.f textarea{min-height:76px;resize:vertical}
+.cols{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}.cols.c3{grid-template-columns:repeat(3,minmax(0,1fr))}.cols.c4{grid-template-columns:repeat(4,minmax(0,1fr))}
+@media (max-width:600px){.cols,.cols.c3,.cols.c4{grid-template-columns:repeat(2,minmax(0,1fr))}.panel-b,.panel-h{padding-left:16px;padding-right:16px}}
+.bar{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.pay{display:grid;grid-template-columns:120px 110px 1fr 1fr 30px;gap:6px;align-items:center}
+@media (max-width:600px){.pay{grid-template-columns:1fr 1fr}}
+.x{border:0;background:none;cursor:pointer;color:var(--bad);font-size:18px}
+.sum{display:flex;gap:18px;flex-wrap:wrap;background:#fff;border:1px solid var(--line);padding:12px 14px;font-size:12px}
+.sum b{display:block;font-family:var(--display);font-size:22px;font-weight:300;color:var(--ink)}
+.toast{position:fixed;left:50%;bottom:calc(84px + var(--safe-b));transform:translateX(-50%);background:var(--hull);color:#fff;padding:11px 18px;font-size:13px;z-index:90;box-shadow:0 10px 30px rgba(0,0,0,.25)}
+@media (min-width:901px){.toast{bottom:28px}}
+/* captain trip card */
+.trip{background:#fff;border:1px solid var(--line);padding:20px;display:grid;gap:12px}
+.trip .big{font-family:var(--display);font-size:26px;line-height:1.15}
+.kv{display:grid;grid-template-columns:130px 1fr;gap:8px 14px;font-size:14px}.kv dt{color:var(--muted);font-size:12px}.kv dd{margin:0;white-space:pre-wrap}
+/* login */
+.login{min-height:100vh;display:grid;place-items:center;background:var(--hull);padding:20px}
+.login .box{background:var(--paper);width:min(400px,100%);padding:36px 32px;display:grid;gap:16px}
+.login .brand{color:var(--hull);padding:0;text-align:center}.login .brand small{color:var(--slate)}
+.err{color:var(--bad);font-size:12px}
+table.t{width:100%;border-collapse:collapse;background:#fff;border:1px solid var(--line);font-size:13px}
+table.t th{font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:var(--muted);text-align:left;font-weight:600;padding:10px 12px;border-bottom:1px solid var(--line)}
+table.t td{padding:10px 12px;border-bottom:1px solid var(--line);vertical-align:top}
+table.t tr:last-child td{border-bottom:0}table.t td.n{text-align:right;white-space:nowrap}
+.tw{overflow-x:auto}
+.bars{display:grid;grid-template-columns:repeat(12,1fr);gap:6px;align-items:end;height:140px;padding:10px 0}
+.bars div{display:flex;flex-direction:column;justify-content:flex-end;gap:2px;height:100%;position:relative}
+.bars i{display:block;width:100%}.bars .rv{background:var(--slate)}.bars .ex{background:#d9b7a0}
+.bars span{position:absolute;bottom:-18px;left:0;right:0;text-align:center;font-size:10px;color:var(--muted)}
+</style>
+</head>
+<body>
+<div id="root"></div>
+<script>
+"use strict";
+/* ---------- helpers ---------- */
+const $=s=>document.querySelector(s);
+function h(tag,attrs,...kids){const e=document.createElement(tag);for(const k in attrs||{}){const v=attrs[k];if(v==null||v===false)continue;if(k.startsWith("on"))e.addEventListener(k.slice(2),v);else if(k==="class")e.className=v;else if(k==="html")e.innerHTML=v;else if(k==="style")e.style.cssText=v;else e.setAttribute(k,v===true?"":v)}for(const c of kids.flat(9)){if(c==null||c===false)continue;e.append(c.nodeType?c:document.createTextNode(String(c)))}return e}
+const eur=n=>n==null||n===""||isNaN(n)?"—":new Intl.NumberFormat("fr-FR",{style:"currency",currency:"EUR",maximumFractionDigits:0}).format(n);
+const today=()=>new Date().toISOString().slice(0,10);
+const fd=(d,o)=>d?new Date(d+"T12:00:00").toLocaleDateString("fr-FR",o||{weekday:"short",day:"numeric",month:"short"}):"";
+const fdl=d=>fd(d,{weekday:"long",day:"numeric",month:"long",year:"numeric"});
+const ym=d=>d.slice(0,7);
+const sum=a=>a.reduce((x,y)=>x+(Number(y)||0),0);
+const paid=b=>sum((b.payments||[]).map(p=>p.amount));
+const waLink=p=>"https://wa.me/"+String(p||"").replace(/\D/g,"");
+function toast(m){const t=h("div",{class:"toast"},m);document.body.append(t);setTimeout(()=>t.remove(),2600)}
+async function api(path,opts={}){const r=await fetch("/api/admin/"+path,{method:opts.method||(opts.body?"POST":"GET"),headers:{"Content-Type":"application/json"},body:opts.body?JSON.stringify(opts.body):undefined,credentials:"same-origin"});
+  const j=await r.json().catch(()=>({}));if(r.status===401&&j.error==="auth"){S.data=null;render();throw new Error("auth")}if(!r.ok)throw new Error(j.error||"Erreur");return j}
+const ICON={
+ dash:'<path d="M3 13h8V3H3v10zm0 8h8v-6H3v6zm10 0h8V11h-8v10zm0-18v6h8V3h-8z"/>',
+ cal:'<path d="M7 2v2H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6a2 2 0 0 0-2-2h-2V2h-2v2H9V2H7zm-2 8h14v10H5V10z"/>',
+ book:'<path d="M4 6h16v2H4zm0 5h16v2H4zm0 5h10v2H4z"/>',
+ inbox:'<path d="M19 3H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V5a2 2 0 0 0-2-2zm0 12h-4a3 3 0 0 1-6 0H5V5h14v10z"/>',
+ users:'<path d="M16 11a3 3 0 1 0-3-3 3 3 0 0 0 3 3zm-8 0a3 3 0 1 0-3-3 3 3 0 0 0 3 3zm0 2c-2.3 0-7 1.2-7 3.5V19h14v-2.5C15 14.2 10.3 13 8 13zm8 0c-.3 0-.6 0-1 .1 1.2.8 2 2 2 3.4V19h6v-2.5c0-2.3-4.7-3.5-7-3.5z"/>',
+ wrench:'<path d="M22.7 19l-9.1-9.1a6 6 0 0 0-7.9-7.9l3.9 3.9-2.8 2.8L2.9 4.8a6 6 0 0 0 7.9 7.9l9.1 9.1a1 1 0 0 0 1.4 0l1.4-1.4a1 1 0 0 0 0-1.4z"/>',
+ euro:'<path d="M15 18.5A6.5 6.5 0 0 1 9.2 15H15v-2H8.6a6 6 0 0 1 0-2H15V9H9.2A6.5 6.5 0 0 1 15 5.5c1.6 0 3.1.6 4.2 1.6L21 5.3A9 9 0 0 0 6.7 9H3v2h3.1a8.3 8.3 0 0 0 0 2H3v2h3.7A9 9 0 0 0 21 18.7l-1.8-1.8a6.4 6.4 0 0 1-4.2 1.6z"/>',
+ team:'<path d="M12 12a4 4 0 1 0-4-4 4 4 0 0 0 4 4zm0 2c-2.7 0-8 1.3-8 4v2h16v-2c0-2.7-5.3-4-8-4z"/>',
+ me:'<path d="M12 2a10 10 0 1 0 10 10A10 10 0 0 0 12 2zm0 4a3 3 0 1 1-3 3 3 3 0 0 1 3-3zm0 14.2a7.2 7.2 0 0 1-6-3.2c0-2 4-3.1 6-3.1s6 1.1 6 3.1a7.2 7.2 0 0 1-6 3.2z"/>'};
+const svg=k=>{const e=document.createElementNS("http://www.w3.org/2000/svg","svg");e.setAttribute("viewBox","0 0 24 24");e.setAttribute("fill","currentColor");e.setAttribute("width","18");e.setAttribute("height","18");e.innerHTML=ICON[k];return e};
+const STATUS={request:"Demande",option:"Option",confirmed:"Confirmée",done:"Effectuée",cancelled:"Annulée"};
+const TYPE={charter:"Day charter",tender:"Tender",transfer:"Transfert",voyage:"Voyage",other:"Autre"};
+const ROLE={owner:"Propriétaire",concierge:"Concierge",captain:"Capitaine"};
+const MKIND={service:"Entretien",repair:"Réparation",inspection:"Contrôle",cleaning:"Nettoyage",issue:"Problème signalé",other:"Autre"};
+const ECAT={fuel:"Carburant",maintenance:"Entretien / pièces",marina:"Marina / mouillage",insurance:"Assurance",crew:"Équipage",cleaning:"Nettoyage",provisions:"Avitaillement / boissons",fees:"Douane / taxes",marketing:"Marketing",other:"Autre"};
+const badge=s=>h("span",{class:"badge b-"+s},STATUS[s]||s);
+
+/* ---------- state ---------- */
+const S={data:null,view:"dash",cal:today().slice(0,7),bfilter:"upcoming",q:"",rfilter:"new",efilter:today().slice(0,7)};
+const role=()=>S.data?.me?.role;
+const staffName=id=>(S.data.staff.find(s=>s.id===id)||{}).name||"";
+const VIEWS=()=>role()==="captain"
+  ?[["dash","Mes sorties","dash"],["cal","Planning","cal"],["maint","Maintenance","wrench"],["me","Compte","me"]]
+  :[["dash","Tableau de bord","dash"],["cal","Calendrier","cal"],["book","Réservations","book"],["req","Demandes","inbox"],["clients","Clients","users"],
+    ...(role()==="owner"?[["maint","Maintenance","wrench"],["exp","Frais & résultats","euro"],["team","Équipe","team"]]:[]),["me","Compte","me"]];
+async function load(){try{S.data=await api("data")}catch(e){if(e.message!=="auth")toast(e.message)}render()}
+function go(v){S.view=v;location.hash=v;render();window.scrollTo(0,0)}
+
+/* ---------- login / invite ---------- */
+function loginView(){
+  const inv=(location.hash.match(/invite=([\w-]+)/)||[])[1];
+  const box=h("div",{class:"box"},h("div",{class:"brand"},"SARE",h("small",{},"CARIBBEAN BREEZE · BACK OFFICE")));
+  const err=h("div",{class:"err"});
+  if(inv){
+    const pw=h("input",{type:"password",minlength:8,required:true,autocomplete:"new-password"}),pw2=h("input",{type:"password",required:true,autocomplete:"new-password"});
+    const title=h("h2",{style:"text-align:center"},"Bienvenue à bord");const sub=h("p",{class:"muted small",style:"text-align:center;margin:0"},"Chargement…");
+    fetch("/api/admin/invite/"+inv).then(r=>r.json()).then(j=>{sub.textContent=j.error?j.error:`${j.name||j.email} · ${ROLE[j.role]||""}. Choisissez votre mot de passe.`});
+    const f=h("form",{class:"grid",onsubmit:async e=>{e.preventDefault();err.textContent="";if(pw.value!==pw2.value){err.textContent="Les mots de passe ne correspondent pas.";return}
+      const r=await fetch("/api/admin/invite/"+inv,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({password:pw.value})});const j=await r.json();
+      if(!r.ok){err.textContent=j.error;return}history.replaceState(null,"","/admin");load()}},
+      h("div",{class:"f"},h("label",{},"Mot de passe (8 caractères min.)"),pw),h("div",{class:"f"},h("label",{},"Confirmer"),pw2),err,h("button",{class:"btn"},"Créer mon accès"));
+    box.append(title,sub,f);
+  } else {
+    const em=h("input",{type:"email",required:true,autocomplete:"username"}),pw=h("input",{type:"password",required:true,autocomplete:"current-password"});
+    const f=h("form",{class:"grid",onsubmit:async e=>{e.preventDefault();err.textContent="";
+      const r=await fetch("/api/admin/login",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({email:em.value,password:pw.value})});const j=await r.json();
+      if(!r.ok){err.textContent=j.error;return}load()}},
+      h("div",{class:"f"},h("label",{},"E-mail"),em),h("div",{class:"f"},h("label",{},"Mot de passe"),pw),err,h("button",{class:"btn"},"Se connecter"));
+    box.append(f);
+  }
+  return h("div",{class:"login"},box);
+}
+
+/* ---------- shell ---------- */
+function render(){
+  const root=$("#root");root.innerHTML="";
+  if(!S.data){root.append(loginView());return}
+  const v=VIEWS();if(!v.some(x=>x[0]===S.view))S.view=v[0][0];
+  const newReq=(S.data.requests||[]).filter(r=>!r.archived).length;
+  const nav=h("nav",{},v.map(([k,l,i])=>h("a",{href:"#"+k,class:S.view===k?"on":"",onclick:e=>{e.preventDefault();go(k)}},svg(i),l,k==="req"&&newReq?h("span",{class:"n"},newReq):null)));
+  const side=h("aside",{class:"side"},h("div",{class:"brand"},"SARE",h("small",{},"CARIBBEAN BREEZE")),nav,
+    h("div",{class:"who"},h("b",{},S.data.me.name||S.data.me.email),ROLE[role()]));
+  const tabs=h("nav",{class:"tabbar"},v.filter(x=>role()==="captain"||["dash","cal","book","req","me"].includes(x[0])).map(([k,l,i])=>h("a",{href:"#"+k,class:S.view===k?"on":"",onclick:e=>{e.preventDefault();go(k)}},svg(i),(l==="Mes sorties"?"Sorties":l==="Tableau de bord"?"Accueil":l.split(" ")[0]))));
+  const main=h("main",{class:"main"},h("div",{class:"mtop"},h("div",{class:"brand"},"SARE"),h("span",{class:"small",style:"color:var(--mist)"},ROLE[role()])));
+  const fn={dash:role()==="captain"?viewCaptainDash:viewDash,cal:viewCal,book:viewBookings,req:viewRequests,clients:viewClients,maint:viewMaint,exp:viewExpenses,team:viewTeam,me:viewMe}[S.view];
+  main.append(...[].concat(fn()).flat(9).filter(x=>x!=null&&x!==false));
+  // extra mobile links for owner sections hidden from tabbar
+  if(role()!=="captain"&&innerWidth<=900&&S.view==="me"){main.append(h("div",{class:"grid",style:"margin-top:18px"},v.filter(x=>!["dash","cal","book","req","me"].includes(x[0])).map(([k,l])=>h("button",{class:"btn line",onclick:()=>go(k)},l))))}
+  root.append(h("div",{class:"app"},side,main),tabs);
+}
+const topBar=(eyebrow,title,...actions)=>h("div",{class:"top"},h("div",{},h("div",{class:"eyebrow"},eyebrow),h("h1",{},title)),h("div",{class:"actions"},actions));
+
+/* ---------- dashboard ---------- */
+function bookingRow(b){
+  const p=paid(b),due=(b.price||0)-p,cap=staffName(b.captainId);
+  return h("div",{class:"row",onclick:()=>openBooking(b)},
+    h("div",{class:"d"},h("b",{},fd(b.date,{day:"numeric",month:"short"})),fd(b.date,{weekday:"long"})+(b.start?" · "+b.start:"")),
+    h("div",{class:"t"},h("b",{},b.title||TYPE[b.type]||"Sortie"," · ",(b.client||{}).name||""),h("span",{},[b.guests?b.guests+" pers.":"",b.pickup,cap?"Cap. "+cap:"Capitaine à assigner"].filter(Boolean).join(" · "))),
+    h("div",{class:"r"},badge(b.status),role()!=="captain"&&b.price?h("div",{style:"margin-top:5px"},due>0?h("span",{class:"badge b-due"},"Reste "+eur(due)):h("span",{class:"badge b-paid"},"Soldé")):null));
+}
+function viewDash(){
+  const B=S.data.bookings,t=today(),m=t.slice(0,7);
+  const act=B.filter(b=>["option","confirmed","done"].includes(b.status));
+  const mb=act.filter(b=>(b.date||"").startsWith(m));
+  const ca=sum(mb.map(b=>b.price)),enc=sum(B.flatMap(b=>(b.payments||[]).filter(p=>(p.date||"").startsWith(m)).map(p=>p.amount)));
+  const toCollect=sum(act.filter(b=>b.date>=t).map(b=>Math.max(0,(b.price||0)-paid(b))));
+  const up=B.filter(b=>b.date>=t&&["option","confirmed"].includes(b.status)).sort((a,b)=>(a.date+a.start).localeCompare(b.date+b.start));
+  const k=[["Chiffre d'affaires · "+fd(t,{month:"long"}),eur(ca),mb.length+" sortie(s)"],["Encaissé ce mois",eur(enc),"acomptes et soldes"],["Reste à encaisser",eur(toCollect),"sorties à venir"]];
+  if(role()==="owner"){const ex=sum((S.data.expenses||[]).filter(e=>(e.date||"").startsWith(m)).map(e=>e.amount));k.push(["Frais du mois",eur(ex),"marge "+eur(ca-ex)])}
+  const reqs=(S.data.requests||[]).filter(r=>!r.archived).slice(0,5);
+  const md=(S.data.maintenance||[]).filter(x=>!x.done&&(x.nextDate||x.kind==="issue")).sort((a,b)=>(a.nextDate||"").localeCompare(b.nextDate||"")).slice(0,5);
+  return [topBar("Bonjour "+(S.data.me.name||""),"Tableau de bord",h("button",{class:"btn",onclick:()=>openBooking()},"+ Nouvelle réservation")),
+    h("div",{class:"kpis"},k.map(([a,b,c])=>h("div",{class:"kpi"},h("div",{class:"eyebrow"},a),h("div",{class:"v"},b),h("div",{class:"s"},c)))),
+    h("div",{class:"two"},
+      h("div",{class:"grid"},h("h2",{},"Prochaines sorties"),h("div",{class:"list"},up.length?up.slice(0,8).map(bookingRow):h("div",{class:"empty"},"Aucune sortie à venir."))),
+      h("div",{class:"grid"},
+        h("h2",{},"Demandes à traiter"),h("div",{class:"list"},reqs.length?reqs.map(reqRow):h("div",{class:"empty"},"Tout est traité.")),
+        role()==="owner"?[h("h2",{style:"margin-top:8px"},"Maintenance à prévoir"),h("div",{class:"list"},md.length?md.map(maintRow):h("div",{class:"empty"},"Rien de prévu."))]:null))];
+}
+function viewCaptainDash(){
+  const t=today(),B=S.data.bookings.filter(b=>(b.endDate||b.date)>=t).sort((a,b)=>(a.date+a.start).localeCompare(b.date+b.start));
+  const past=S.data.bookings.filter(b=>(b.endDate||b.date)<t).sort((a,b)=>b.date.localeCompare(a.date)).slice(0,10);
+  return [topBar("Bonjour "+(S.data.me.name||""),"Mes sorties"),
+    h("div",{class:"grid"},B.length?B.map(tripCard):h("div",{class:"card empty"},"Aucune sortie prévue pour l'instant.")),
+    past.length?[h("h2",{style:"margin:26px 0 10px"},"Sorties passées"),h("div",{class:"list"},past.map(bookingRow))]:null];
+}
+function tripCard(b){
+  const c=b.client||{};
+  const kv=[["Horaires",[b.start,b.end].filter(Boolean).join(" – ")],["Prise en charge",b.pickup],["Invités",b.guests],["Occasion",b.occasion],["Options",(b.options||[]).join(", ")],["Client",c.name],["Programme",b.itinerary],["Notes",b.crewNotes]].filter(([,v])=>v);
+  return h("div",{class:"trip"},h("div",{class:"bar",style:"justify-content:space-between"},h("div",{class:"eyebrow"},TYPE[b.type]||"Sortie"," · ",b.ref||""),badge(b.status)),
+    h("div",{class:"big"},fdl(b.date),b.endDate&&b.endDate!==b.date?" → "+fdl(b.endDate):""),b.title?h("div",{class:"muted"},b.title):null,
+    h("dl",{class:"kv"},kv.map(([k,v])=>[h("dt",{},k),h("dd",{},v)])),
+    h("div",{class:"bar"},c.phone?[h("a",{class:"btn sm",href:"tel:"+c.phone},"Appeler "+(c.name||"le client")),h("a",{class:"btn sm line",href:waLink(c.phone),target:"_blank"},"WhatsApp")]:null,
+      b.pickup?h("a",{class:"btn sm line",target:"_blank",href:"https://maps.google.com/?q="+encodeURIComponent(b.pickup+", Sint Maarten")},"Itinéraire"):null));
+}
+
+/* ---------- calendar ---------- */
+function viewCal(){
+  const [y,mo]=S.cal.split("-").map(Number),first=new Date(Date.UTC(y,mo-1,1)),start=new Date(first);start.setUTCDate(1-((first.getUTCDay()+6)%7));
+  const t=today(),B=S.data.bookings.filter(b=>b.status!=="cancelled"),blocks=S.data.blocks||[];
+  const g=h("div",{class:"cal-g"},["Lun","Mar","Mer","Jeu","Ven","Sam","Dim"].map(d=>h("div",{class:"wd"},d)));
+  for(let i=0;i<42;i++){const d=new Date(start);d.setUTCDate(start.getUTCDate()+i);const ds=d.toISOString().slice(0,10);
+    const evs=B.filter(b=>b.date&&ds>=b.date&&ds<=(b.endDate||b.date)),bl=blocks.filter(b=>ds>=b.date&&ds<=(b.endDate||b.date));
+    g.append(h("div",{class:"day"+(ds.slice(0,7)!==S.cal?" out":"")+(ds===t?" today":"")+(bl.length?" blocked":""),onclick:e=>{if(e.target.closest(".ev"))return;if(role()!=="captain")dayMenu(ds)}},
+      h("span",{class:"num"},d.getUTCDate()),
+      evs.map(b=>h("span",{class:"ev "+b.status,title:(b.title||"")+" "+((b.client||{}).name||""),onclick:()=>openBooking(b)},(b.start?b.start+" ":"")+((b.client||{}).name||b.title||TYPE[b.type]))),
+      bl.map(b=>h("span",{class:"ev block",onclick:()=>role()!=="captain"&&openBlock(b)},"⛔ "+(b.reason||"Indisponible")))));
+    if(i>=34&&d.getUTCMonth()!==mo-1&&i%7===6)break;}
+  const shift=n=>{const d=new Date(Date.UTC(y,mo-1+n,1));S.cal=d.toISOString().slice(0,7);render()};
+  const label=first.toLocaleDateString("fr-FR",{month:"long",year:"numeric",timeZone:"UTC"});
+  return [topBar(role()==="captain"?"Mes sorties":"Planning du bateau","Calendrier",role()!=="captain"?[h("button",{class:"btn line",onclick:()=>openBlock()},"Bloquer des dates"),h("button",{class:"btn",onclick:()=>openBooking()},"+ Réservation")]:null),
+    h("div",{class:"cal"},h("div",{class:"cal-h"},h("button",{class:"btn sm line",onclick:()=>shift(-1)},"←"),h("h2",{style:"text-transform:capitalize"},label),h("div",{class:"bar"},h("button",{class:"btn sm ghost",onclick:()=>{S.cal=t.slice(0,7);render()}},"Aujourd'hui"),h("button",{class:"btn sm line",onclick:()=>shift(1)},"→"))),g),
+    h("div",{class:"legend"},h("span",{},h("i",{style:"background:var(--opt)"}),"Option"),h("span",{},h("i",{style:"background:var(--ok)"}),"Confirmée"),h("span",{},h("i",{style:"background:#999"}),"Effectuée"),h("span",{},h("i",{style:"background:repeating-linear-gradient(135deg,#f6f4f0 0 3px,#d6d1c7 3px 6px)"}),"Indisponible"),
+      role()!=="captain"?h("span",{},"Les jours en option, confirmés ou bloqués apparaissent comme indisponibles sur le site."):null)];
+}
+function dayMenu(ds){openBooking({date:ds})}
+
+/* ---------- bookings ---------- */
+function viewBookings(){
+  const t=today(),q=S.q.toLowerCase();
+  let B=S.data.bookings.slice();
+  if(S.bfilter==="upcoming")B=B.filter(b=>(b.endDate||b.date)>=t&&b.status!=="cancelled");
+  if(S.bfilter==="past")B=B.filter(b=>(b.endDate||b.date)<t);
+  if(S.bfilter==="unpaid")B=B.filter(b=>b.status!=="cancelled"&&(b.price||0)-paid(b)>0);
+  if(S.bfilter==="cancelled")B=B.filter(b=>b.status==="cancelled");
+  if(q)B=B.filter(b=>JSON.stringify([b.title,b.ref,b.client,b.pickup,b.occasion]).toLowerCase().includes(q));
+  B.sort((a,b)=>S.bfilter==="past"?b.date.localeCompare(a.date):(a.date||"").localeCompare(b.date||""));
+  const tot=sum(B.map(b=>b.price)),pd=sum(B.map(paid));
+  return [topBar("Toutes les prestations","Réservations",h("button",{class:"btn",onclick:()=>openBooking()},"+ Nouvelle réservation")),
+    h("div",{class:"bar",style:"justify-content:space-between;margin-bottom:12px"},
+      h("div",{class:"pills",style:"margin:0"},[["upcoming","À venir"],["past","Passées"],["unpaid","Non soldées"],["cancelled","Annulées"],["all","Toutes"]].map(([k,l])=>h("button",{class:"pill"+(S.bfilter===k?" on":""),onclick:()=>{S.bfilter=k;render()}},l))),
+      h("input",{class:"search",placeholder:"Rechercher un client, une réf…",value:S.q,oninput:e=>{S.q=e.target.value;clearTimeout(S._t);S._t=setTimeout(()=>{render();const i=$(".search");i.focus();i.setSelectionRange(i.value.length,i.value.length)},250)}})),
+    h("div",{class:"sum",style:"margin-bottom:12px"},h("div",{},h("b",{},B.length),"réservation(s)"),h("div",{},h("b",{},eur(tot)),"montant total"),h("div",{},h("b",{},eur(pd)),"encaissé"),h("div",{},h("b",{},eur(tot-pd)),"reste à encaisser")),
+    h("div",{class:"list"},B.length?B.map(bookingRow):h("div",{class:"empty"},"Aucune réservation."))];
+}
+
+function field(label,el,cls){return h("div",{class:"f"+(cls?" "+cls:"")},h("label",{},label),el)}
+function inp(v,attrs={}){return h("input",{value:v??"",...attrs})}
+function sel(v,opts,attrs={}){const s=h("select",attrs,opts.map(([k,l])=>h("option",{value:k},l)));s.value=v??opts[0][0];return s}
+function area(v,attrs={}){const t=h("textarea",attrs);t.value=v??"";return t}
+function closePanel(){document.querySelector(".ov")?.remove();document.body.style.overflow=""}
+function panel(title,eyebrow,bodyEls,footEls){
+  closePanel();
+  const ov=h("div",{class:"ov",onclick:e=>{if(e.target===ov)closePanel()}},
+    h("div",{class:"panel"},h("div",{class:"panel-h"},h("div",{},h("div",{class:"eyebrow"},eyebrow),h("h2",{},title)),h("div",{class:"bar"},footEls,h("button",{class:"btn sm ghost",onclick:closePanel},"Fermer ✕"))),h("div",{class:"panel-b"},bodyEls)));
+  document.body.append(ov);document.body.style.overflow="hidden";
+}
+
+function openBooking(b0){
+  if(role()==="captain"){if(!b0?.id)return;panel(b0.title||TYPE[b0.type]||"Sortie",b0.ref||"",[tripCard(b0)]);return}
+  const b=JSON.parse(JSON.stringify(b0||{}));b.client||={};b.payments||=[];b.options||=[];
+  const isNew=!b.id;
+  const F={status:sel(b.status||"option",Object.entries(STATUS)),type:sel(b.type||"charter",Object.entries(TYPE)),title:inp(b.title,{placeholder:"ex. Full day Saint-Barth, Anniversaire…"}),
+    date:inp(b.date,{type:"date",required:true}),endDate:inp(b.endDate,{type:"date"}),start:inp(b.start||"09:00",{type:"time"}),end:inp(b.end||"17:00",{type:"time"}),guests:inp(b.guests,{type:"number",min:1,max:14}),
+    pickup:inp(b.pickup||"Porto Cupecoy",{}),occasion:inp(b.occasion),options:inp((b.options||[]).join(", "),{placeholder:"Bartender, jet-ski…"}),
+    cname:inp(b.client.name),cemail:inp(b.client.email,{type:"email"}),cphone:inp(b.client.phone,{type:"tel",placeholder:"+1 …"}),clang:sel(b.client.lang||"en",[["en","Anglais"],["fr","Français"],["es","Espagnol"],["ru","Russe"],["pt","Portugais"],["nl","Néerlandais"]]),ccomp:inp(b.client.company,{placeholder:"Yacht / société"}),
+    price:inp(b.price,{type:"number",min:0,step:"10"}),deposit:inp(b.deposit,{type:"number",min:0,step:"10"}),
+    captainId:sel(b.captainId||"",[["","— À assigner —"],...S.data.staff.filter(s=>s.role==="captain"||s.role==="owner").map(s=>[s.id,s.name+" ("+ROLE[s.role]+")"])]),
+    conciergeId:sel(b.conciergeId||"",[["","—"],...S.data.staff.filter(s=>s.role!=="captain").map(s=>[s.id,s.name])]),
+    itinerary:area(b.itinerary,{placeholder:"Programme de la journée, escales, restaurant réservé…"}),crewNotes:area(b.crewNotes,{placeholder:"Allergies, préférences, enfants, matériel à prévoir… (visible par le capitaine)"}),notes:area(b.notes,{placeholder:"Notes internes (non visibles par le capitaine)"})};
+  const pays=h("div",{class:"grid"});const paySum=h("div",{class:"sum"});
+  function drawPays(){pays.innerHTML="";b.payments.forEach((p,i)=>pays.append(h("div",{class:"pay"},
+      inp(p.date,{type:"date",oninput:e=>p.date=e.target.value}),inp(p.amount,{type:"number",placeholder:"€",oninput:e=>{p.amount=Number(e.target.value);drawSum()}}),
+      sel(p.method||"Virement",[["Virement","Virement"],["Stripe","Stripe (carte)"],["Espèces","Espèces"],["Chèque","Chèque"],["Autre","Autre"]],{onchange:e=>p.method=e.target.value}),
+      inp(p.note,{placeholder:"Acompte, solde…",oninput:e=>p.note=e.target.value}),h("button",{class:"x",type:"button",onclick:()=>{b.payments.splice(i,1);drawPays()}},"×"))));drawSum()}
+  function drawSum(){const pr=Number(F.price.value)||0,pd=paid(b);paySum.innerHTML="";paySum.append(h("div",{},h("b",{},eur(pr)),"prix"),h("div",{},h("b",{},eur(pd)),"encaissé"),h("div",{},h("b",{style:pr-pd>0?"color:var(--warn)":"color:var(--ok)"},eur(pr-pd)),"reste"))}
+  F.price.addEventListener("input",drawSum);drawPays();
+  const linkBox=h("div");const pinfo=S.data.payments?.[b.id];
+  if(pinfo?.url)linkBox.append(stripeBox(pinfo,b));
+  const collect=()=>({id:b.id,status:F.status.value,type:F.type.value,title:F.title.value,date:F.date.value,endDate:F.endDate.value,start:F.start.value,end:F.end.value,guests:F.guests.value,pickup:F.pickup.value,occasion:F.occasion.value,options:F.options.value,
+    client:{name:F.cname.value,email:F.cemail.value,phone:F.cphone.value,lang:F.clang.value,company:F.ccomp.value},price:F.price.value,deposit:F.deposit.value,payments:b.payments,captainId:F.captainId.value,conciergeId:F.conciergeId.value,itinerary:F.itinerary.value,crewNotes:F.crewNotes.value,notes:F.notes.value,requestKey:b.requestKey||""});
+  async function saveB(){if(!F.date.value){toast("La date est obligatoire.");return null}
+    const clash=S.data.bookings.find(x=>x.id!==b.id&&["option","confirmed"].includes(x.status)&&x.date&&F.date.value<=(x.endDate||x.date)&&(F.endDate.value||F.date.value)>=x.date);
+    if(clash&&["option","confirmed"].includes(F.status.value)&&!confirm(`Attention : le bateau est déjà réservé ce jour-là (${clash.title||""} ${clash.client?.name||""}). Enregistrer quand même ?`))return null;
+    try{const r=await api("bookings"+(b.id?"/"+b.id:""),{body:collect()});b.id=r.item.id;toast("Réservation enregistrée");await load();return r.item}catch(e){toast(e.message);return null}}
+  const actions=[h("button",{class:"btn",onclick:async()=>{if(await saveB())closePanel()}},"Enregistrer")];
+  const extra=h("div",{class:"bar"},
+    h("button",{class:"btn sm line",type:"button",onclick:async()=>{const it=await saveB();if(!it)return;const amt=prompt("Montant de l'acompte à demander (€) :",F.deposit.value||Math.round((Number(F.price.value)||0)*0.3)||"");if(!amt)return;
+      try{const r=await api(`bookings/${it.id}/deposit`,{body:{amount:amt}});await load();linkBox.innerHTML="";linkBox.append(stripeBox({url:r.url,amount:Number(amt),status:"pending"},{...it,client:collect().client}));openBookingKeep(it.id)}catch(e){toast(e.message)}}},"Lien d'acompte Stripe"),
+    h("button",{class:"btn sm line",type:"button",onclick:async()=>{const it=await saveB();if(!it)return;if(!F.captainId.value){toast("Assignez d'abord un capitaine.");return}try{const r=await api(`bookings/${it.id}/sheet`,{body:{}});toast(r.ok?"Fiche envoyée au capitaine":"E-mail non envoyé")}catch(e){toast(e.message)}}},"Envoyer la fiche au capitaine"),
+    F.cphone.value?h("a",{class:"btn sm line",href:waLink(F.cphone.value),target:"_blank"},"WhatsApp client"):null,
+    F.cemail.value?h("a",{class:"btn sm line",href:"mailto:"+F.cemail.value},"E-mail client"):null,
+    !isNew?h("button",{class:"btn sm danger",type:"button",onclick:async()=>{if(!confirm("Supprimer définitivement cette réservation ?"))return;await api("bookings/"+b.id,{method:"DELETE"});closePanel();toast("Supprimée");load()}},"Supprimer"):null);
+  panel(isNew?"Nouvelle réservation":(b.title||TYPE[b.type]||"Réservation"),isNew?"Réservation":b.ref,[
+    extra,linkBox,
+    h("fieldset",{},h("legend",{},"Prestation"),h("div",{class:"cols"},field("Statut",F.status),field("Type",F.type)),field("Intitulé",F.title),
+      h("div",{class:"cols c4"},field("Date",F.date),field("Date de fin (option)",F.endDate),field("Départ",F.start),field("Retour",F.end)),
+      h("div",{class:"cols c3"},field("Invités",F.guests),field("Prise en charge",F.pickup),field("Occasion",F.occasion)),field("Options",F.options)),
+    h("fieldset",{},h("legend",{},"Client"),h("div",{class:"cols"},field("Nom",F.cname),field("Yacht / société",F.ccomp),field("E-mail",F.cemail),field("Téléphone / WhatsApp",F.cphone)),h("div",{class:"cols"},field("Langue",F.clang))),
+    h("fieldset",{},h("legend",{},"Tarif & paiements"),h("div",{class:"cols"},field("Prix total (€)",F.price),field("Acompte prévu (€)",F.deposit)),paySum,pays,
+      h("div",{},h("button",{class:"btn sm line",type:"button",onclick:()=>{b.payments.push({date:today(),amount:"",method:"Virement",note:b.payments.length?"Solde":"Acompte"});drawPays()}},"+ Ajouter un paiement"))),
+    h("fieldset",{},h("legend",{},"Équipe"),h("div",{class:"cols"},field("Capitaine",F.captainId),field("Concierge",F.conciergeId)),field("Programme (visible capitaine)",F.itinerary),field("Notes pour l'équipage (visible capitaine)",F.crewNotes),field("Notes internes",F.notes))
+  ],actions);
+}
+function openBookingKeep(id){const b=S.data.bookings.find(x=>x.id===id);if(b)openBooking(b)}
+function stripeBox(p,b){
+  const msg=encodeURIComponent(`Hello ${(b.client?.name||"").split(" ")[0]}, here is the secure link to pay the deposit for your SARE booking (${eur(p.amount)}): ${p.url}`);
+  if(p.status==="paid")return h("div",{class:"sum"},h("div",{},h("b",{style:"color:var(--ok)"},"✔ "+eur(p.paidAmount||p.amount)),"acompte payé en ligne"));
+  return h("div",{class:"card grid"},h("div",{class:"eyebrow"},"Lien d'acompte · en attente · ",eur(p.amount)),h("input",{readonly:true,value:p.url,class:"search",onclick:e=>{e.target.select();navigator.clipboard?.writeText(p.url);toast("Lien copié")}}),
+    h("div",{class:"bar"},b.client?.phone?h("a",{class:"btn sm",target:"_blank",href:waLink(b.client.phone)+"?text="+msg},"Envoyer par WhatsApp"):null,b.client?.email?h("a",{class:"btn sm line",href:`mailto:${b.client.email}?subject=${encodeURIComponent("SARE · Deposit")}&body=${msg}`},"Envoyer par e-mail"):null));
+}
+function openBlock(b0){
+  const b=b0||{};const d=inp(b.date||today(),{type:"date"}),e=inp(b.endDate,{type:"date"}),r=inp(b.reason,{placeholder:"Maintenance, usage privé, convoyage…"});
+  panel(b.id?"Dates bloquées":"Bloquer des dates","Indisponibilité",[h("p",{class:"muted",style:"margin:0"},"Ces jours apparaîtront comme indisponibles sur le site."),h("div",{class:"cols"},field("Du",d),field("Au (inclus)",e)),field("Motif (interne)",r)],
+    [b.id?h("button",{class:"btn sm danger",onclick:async()=>{await api("blocks/"+b.id,{method:"DELETE"});closePanel();load()}},"Supprimer"):null,
+     h("button",{class:"btn",onclick:async()=>{try{await api("blocks"+(b.id?"/"+b.id:""),{body:{date:d.value,endDate:e.value,reason:r.value}});closePanel();toast("Enregistré");load()}catch(x){toast(x.message)}}},"Enregistrer")]);
+}
+
+/* ---------- requests ---------- */
+function reqRow(r){
+  const when=r.type==="tender"?[r.from,r.to].filter(Boolean).map(x=>fd(x)).join(" → "):fd(r.date);
+  return h("div",{class:"row",onclick:()=>openRequest(r)},h("div",{class:"d"},h("b",{},fd(r.receivedAt?.slice(0,10),{day:"numeric",month:"short"})),"reçue"),
+    h("div",{class:"t"},h("b",{},r.name||"—"," · ",r.type==="tender"?"Tender":(r.formula||"Charter")),h("span",{},[when,r.guests?r.guests+" pers.":"",r.email||r.contact].filter(Boolean).join(" · "))),
+    h("div",{class:"r"},r.archived?h("span",{class:"badge"},"Traitée"):h("span",{class:"badge b-due"},"Nouvelle"),r.estimate?h("div",{style:"margin-top:5px"},eur(r.estimate)):null));
+}
+function viewRequests(){
+  let R=S.data.requests||[];R=S.rfilter==="new"?R.filter(r=>!r.archived):S.rfilter==="done"?R.filter(r=>r.archived):R;
+  return [topBar("Reçues depuis le site","Demandes"),h("div",{class:"pills"},[["new","À traiter"],["done","Traitées"],["all","Toutes"]].map(([k,l])=>h("button",{class:"pill"+(S.rfilter===k?" on":""),onclick:()=>{S.rfilter=k;render()}},l))),
+    h("div",{class:"list"},R.length?R.map(reqRow):h("div",{class:"empty"},"Aucune demande."))];
+}
+const RLABEL={type:"Type",formula:"Formule",date:"Date",from:"Du",to:"Au",guests:"Invités",port:"Départ",occasion:"Occasion",options:"Options",estimate:"Estimation",name:"Nom",email:"E-mail",contact:"Contact",role:"Rôle",yacht:"Yacht",length:"Longueur",anchor:"Mouillage",services:"Services",notes:"Message",lang:"Langue",ref:"Réf."};
+function openRequest(r){
+  const kv=Object.entries(RLABEL).filter(([k])=>r[k]!=null&&r[k]!==""&&!(Array.isArray(r[k])&&!r[k].length)).map(([k,l])=>[h("dt",{},l),h("dd",{},Array.isArray(r[k])?r[k].join(", "):k==="estimate"?eur(r[k]):String(r[k]))]);
+  const contact=r.email||r.contact||"";
+  const toBooking=()=>{closePanel();openBooking({status:"option",type:r.type==="tender"?"tender":"charter",title:r.type==="tender"?`Tender · ${r.yacht||""}`:`${r.formula||"Charter"}${r.occasion?" · "+r.occasion:""}`,
+    date:r.date||r.from||"",endDate:r.to||"",guests:r.guests,pickup:r.port==="Pick-up requested"?"":(r.port||r.anchor||""),occasion:r.occasion||"",options:r.options||r.services||[],
+    client:{name:r.name,email:/@/.test(contact)?contact:"",phone:/@/.test(contact)?"":contact,lang:r.lang,company:r.yacht||""},price:r.estimate||"",crewNotes:r.notes||"",requestKey:r.key})};
+  panel(r.name||"Demande",(r.type==="tender"?"Tender":"Day charter")+" · "+(r.ref||""),[h("dl",{class:"kv"},kv),
+    h("div",{class:"bar"},/@/.test(contact)?h("a",{class:"btn sm line",href:"mailto:"+contact},"Répondre par e-mail"):h("a",{class:"btn sm line",target:"_blank",href:waLink(contact)},"WhatsApp"))],
+    [h("button",{class:"btn sm line",onclick:async()=>{await api("requests/archive",{body:{key:r.key,archived:!r.archived}});closePanel();load()}},r.archived?"Remettre à traiter":"Marquer traitée"),h("button",{class:"btn",onclick:toBooking},"Créer la réservation")]);
+}
+
+/* ---------- clients ---------- */
+function viewClients(){
+  const m=new Map();
+  const add=(c,src)=>{const key=(c.email||c.phone||c.name||"").toLowerCase().trim();if(!key)return;const x=m.get(key)||{name:"",email:"",phone:"",company:"",lang:"",bookings:[],requests:0,spent:0,last:""};
+    x.name=x.name||c.name||"";x.email=x.email||c.email||"";x.phone=x.phone||c.phone||"";x.company=x.company||c.company||"";x.lang=x.lang||c.lang||"";
+    if(src.b){x.bookings.push(src.b);if(src.b.status!=="cancelled")x.spent+=paid(src.b);if((src.b.date||"")>x.last)x.last=src.b.date}else x.requests++;m.set(key,x)};
+  S.data.bookings.forEach(b=>add(b.client||{},{b}));
+  (S.data.requests||[]).forEach(r=>{const c=r.email||r.contact||"";add({name:r.name,email:/@/.test(c)?c:"",phone:/@/.test(c)?"":c,lang:r.lang,company:r.yacht},{})});
+  let L=[...m.values()];const q=S.q.toLowerCase();if(q)L=L.filter(x=>JSON.stringify(x).toLowerCase().includes(q));
+  L.sort((a,b)=>b.spent-a.spent||(b.last||"").localeCompare(a.last||""));
+  return [topBar("Carnet d'adresses","Clients",h("input",{class:"search",placeholder:"Rechercher…",value:S.q,oninput:e=>{S.q=e.target.value;clearTimeout(S._t);S._t=setTimeout(()=>{render();const i=$(".search");i.focus();i.setSelectionRange(i.value.length,i.value.length)},250)}})),
+    h("div",{class:"tw"},h("table",{class:"t"},h("thead",{},h("tr",{},["Client","Contact","Réservations","Encaissé","Dernière sortie"].map(x=>h("th",{},x)))),
+      h("tbody",{},L.length?L.map(x=>h("tr",{},h("td",{},h("b",{style:"font-weight:500"},x.name||"—"),x.company?h("div",{class:"small muted"},x.company):null),
+        h("td",{},x.email?h("div",{},h("a",{href:"mailto:"+x.email},x.email)):null,x.phone?h("div",{},h("a",{href:waLink(x.phone),target:"_blank"},x.phone)):null),
+        h("td",{},x.bookings.length+(x.requests?` · ${x.requests} demande(s)`:"")),h("td",{class:"n"},eur(x.spent)),h("td",{},fd(x.last)||"—"))):h("tr",{},h("td",{colspan:5,class:"empty"},"Aucun client pour l'instant.")))))];
+}
+
+/* ---------- maintenance ---------- */
+function maintRow(x){
+  const late=x.nextDate&&x.nextDate<today()&&!x.done;
+  return h("div",{class:"row",onclick:()=>openMaint(x)},h("div",{class:"d"},h("b",{},fd(x.date,{day:"numeric",month:"short"})),x.engineHours?x.engineHours+" h":""),
+    h("div",{class:"t"},h("b",{},x.title||MKIND[x.kind]),h("span",{},[MKIND[x.kind],x.nextDate?"Prochain : "+fd(x.nextDate):"",x.nextHours?"à "+x.nextHours+" h":"",staffName(x.by)].filter(Boolean).join(" · "))),
+    h("div",{class:"r"},x.kind==="issue"&&!x.done?h("span",{class:"badge b-cancelled"},"À traiter"):late?h("span",{class:"badge b-due"},"En retard"):x.done?h("span",{class:"badge b-paid"},"Fait"):null,role()==="owner"&&x.cost?h("div",{style:"margin-top:5px"},eur(x.cost)):null));
+}
+function viewMaint(){
+  const L=(S.data.maintenance||[]).slice().sort((a,b)=>(b.date||"").localeCompare(a.date||""));
+  const hrs=Math.max(0,...L.map(x=>x.engineHours||0));
+  const due=L.filter(x=>!x.done&&(x.kind==="issue"||x.nextDate||x.nextHours));
+  const cost=sum(L.filter(x=>(x.date||"").startsWith(today().slice(0,4))).map(x=>x.cost));
+  return [topBar("Suivi technique du Nor-Tech 450","Maintenance",h("button",{class:"btn",onclick:()=>openMaint()},role()==="captain"?"+ Signaler / consigner":"+ Nouvelle intervention")),
+    h("div",{class:"kpis"},h("div",{class:"kpi"},h("div",{class:"eyebrow"},"Heures moteur (dernier relevé)"),h("div",{class:"v"},hrs?hrs+" h":"—")),h("div",{class:"kpi"},h("div",{class:"eyebrow"},"À prévoir / à traiter"),h("div",{class:"v"},due.length)),
+      role()==="owner"?h("div",{class:"kpi"},h("div",{class:"eyebrow"},"Coût maintenance "+today().slice(0,4)),h("div",{class:"v"},eur(cost))):null),
+    h("div",{class:"list"},L.length?L.map(maintRow):h("div",{class:"empty"},"Aucune intervention consignée."))];
+}
+function openMaint(x0){
+  const x=x0||{};const own=role()==="owner",mine=!x.id||x.by===S.data.me.id||own;
+  const F={date:inp(x.date||today(),{type:"date"}),kind:sel(x.kind||(role()==="captain"?"issue":"service"),Object.entries(MKIND)),title:inp(x.title,{placeholder:"Vidange moteurs, anode, pompe de cale…"}),
+    engineHours:inp(x.engineHours,{type:"number",min:0}),notes:area(x.notes),nextDate:inp(x.nextDate,{type:"date"}),nextHours:inp(x.nextHours,{type:"number",min:0}),
+    done:h("input",{type:"checkbox",checked:!!x.done,style:"width:auto"}),cost:inp(x.cost,{type:"number",min:0}),vendor:inp(x.vendor)};
+  panel(x.id?(x.title||MKIND[x.kind]):"Nouvelle entrée","Maintenance",[
+    h("div",{class:"cols"},field("Date",F.date),field("Type",F.kind)),field("Intitulé",F.title),h("div",{class:"cols c3"},field("Heures moteur",F.engineHours),field("Prochaine échéance",F.nextDate),field("ou à (heures)",F.nextHours)),
+    field("Détails",F.notes),own?h("div",{class:"cols"},field("Coût (€)",F.cost),field("Prestataire",F.vendor)):null,h("label",{class:"bar"},F.done,"Traité / terminé")],
+    mine?[x.id?h("button",{class:"btn sm danger",onclick:async()=>{if(!confirm("Supprimer ?"))return;await api("maintenance/"+x.id,{method:"DELETE"});closePanel();load()}},"Supprimer"):null,
+      h("button",{class:"btn",onclick:async()=>{try{await api("maintenance"+(x.id?"/"+x.id:""),{body:{date:F.date.value,kind:F.kind.value,title:F.title.value,engineHours:F.engineHours.value,notes:F.notes.value,nextDate:F.nextDate.value,nextHours:F.nextHours.value,done:F.done.checked,cost:F.cost.value,vendor:F.vendor.value}});closePanel();toast("Enregistré");load()}catch(e){toast(e.message)}}},"Enregistrer")]:[]);
+}
+
+/* ---------- expenses & P&L ---------- */
+function viewExpenses(){
+  const y=S.efilter.slice(0,4),E=(S.data.expenses||[]).slice().sort((a,b)=>(b.date||"").localeCompare(a.date||""));
+  const monthE=E.filter(e=>(e.date||"").startsWith(S.efilter));
+  const act=S.data.bookings.filter(b=>["option","confirmed","done"].includes(b.status));
+  const months=[...Array(12)].map((_,i)=>`${y}-${String(i+1).padStart(2,"0")}`);
+  const rev=months.map(m=>sum(act.filter(b=>(b.date||"").startsWith(m)).map(b=>b.price))),ex=months.map(m=>sum(E.filter(e=>(e.date||"").startsWith(m)).map(e=>e.amount))+sum((S.data.maintenance||[]).filter(x=>(x.date||"").startsWith(m)).map(x=>x.cost)));
+  const max=Math.max(1,...rev,...ex);
+  const byCat={};E.filter(e=>(e.date||"").startsWith(y)).forEach(e=>byCat[e.category]=(byCat[e.category]||0)+(e.amount||0));
+  const maintY=sum((S.data.maintenance||[]).filter(x=>(x.date||"").startsWith(y)).map(x=>x.cost));if(maintY)byCat.maintenance=(byCat.maintenance||0)+maintY;
+  const R=sum(rev),X=sum(ex);
+  const shiftM=n=>{const d=new Date(S.efilter+"-15");d.setMonth(d.getMonth()+n);S.efilter=d.toISOString().slice(0,7);render()};
+  return [topBar("Frais de fonctionnement","Frais & résultats",h("button",{class:"btn",onclick:()=>openExpense()},"+ Nouvelle dépense")),
+    h("div",{class:"kpis"},[["CA "+y,eur(R),"réservations option/confirmées/effectuées"],["Frais "+y,eur(X),"dépenses + maintenance"],["Résultat "+y,eur(R-X),R?Math.round((R-X)/R*100)+" % de marge":""]].map(([a,b,c])=>h("div",{class:"kpi"},h("div",{class:"eyebrow"},a),h("div",{class:"v"},b),h("div",{class:"s"},c)))),
+    h("div",{class:"two"},
+      h("div",{class:"card"},h("div",{class:"bar",style:"justify-content:space-between"},h("h3",{},"CA et frais par mois · "+y),h("div",{class:"legend",style:"margin:0"},h("span",{},h("i",{style:"background:var(--slate)"}),"CA"),h("span",{},h("i",{style:"background:#d9b7a0"}),"Frais"))),
+        h("div",{class:"bars",style:"margin-bottom:18px"},months.map((m,i)=>h("div",{title:`${m} · CA ${eur(rev[i])} · frais ${eur(ex[i])}`},h("div",{style:"display:flex;gap:2px;align-items:flex-end;height:100%"},h("i",{class:"rv",style:`height:${rev[i]/max*100}%`}),h("i",{class:"ex",style:`height:${ex[i]/max*100}%`})),h("span",{},"JFMAMJJASOND"[i]))))),
+      h("div",{class:"card"},h("h3",{style:"margin-bottom:10px"},"Répartition des frais · "+y),Object.keys(byCat).length?h("table",{class:"t",style:"border:0"},h("tbody",{},Object.entries(byCat).sort((a,b)=>b[1]-a[1]).map(([k,v])=>h("tr",{},h("td",{},ECAT[k]||k),h("td",{class:"n"},eur(v)))))):h("div",{class:"empty"},"Aucune dépense."))),
+    h("div",{class:"bar",style:"justify-content:space-between;margin:24px 0 10px"},h("h2",{style:"text-transform:capitalize"},new Date(S.efilter+"-15").toLocaleDateString("fr-FR",{month:"long",year:"numeric"})),h("div",{class:"bar"},h("button",{class:"btn sm line",onclick:()=>shiftM(-1)},"←"),h("button",{class:"btn sm line",onclick:()=>shiftM(1)},"→"))),
+    h("div",{class:"list"},monthE.length?monthE.map(e=>h("div",{class:"row",onclick:()=>openExpense(e)},h("div",{class:"d"},h("b",{},fd(e.date,{day:"numeric",month:"short"}))),h("div",{class:"t"},h("b",{},e.label||ECAT[e.category]),h("span",{},ECAT[e.category])),h("div",{class:"r"},h("b",{},eur(e.amount))))):h("div",{class:"empty"},"Aucune dépense ce mois-ci.")),
+    h("div",{class:"sum",style:"margin-top:10px"},h("div",{},h("b",{},eur(sum(monthE.map(e=>e.amount)))),"total du mois"))];
+}
+function openExpense(e0){
+  const e=e0||{};const F={date:inp(e.date||today(),{type:"date"}),category:sel(e.category||"fuel",Object.entries(ECAT)),label:inp(e.label,{placeholder:"Plein Porto Cupecoy, assurance annuelle…"}),amount:inp(e.amount,{type:"number",min:0,step:"0.01"}),
+    bookingId:sel(e.bookingId||"",[["","— Aucune —"],...S.data.bookings.slice().sort((a,b)=>(b.date||"").localeCompare(a.date||"")).slice(0,60).map(b=>[b.id,`${b.date} · ${b.title||TYPE[b.type]} · ${(b.client||{}).name||""}`])]),notes:area(e.notes)};
+  panel(e.id?(e.label||"Dépense"):"Nouvelle dépense","Frais",[h("div",{class:"cols"},field("Date",F.date),field("Montant (€)",F.amount)),h("div",{class:"cols"},field("Catégorie",F.category),field("Liée à une sortie",F.bookingId)),field("Libellé",F.label),field("Notes",F.notes)],
+    [e.id?h("button",{class:"btn sm danger",onclick:async()=>{if(!confirm("Supprimer ?"))return;await api("expenses/"+e.id,{method:"DELETE"});closePanel();load()}},"Supprimer"):null,
+     h("button",{class:"btn",onclick:async()=>{try{await api("expenses"+(e.id?"/"+e.id:""),{body:{date:F.date.value,category:F.category.value,label:F.label.value,amount:F.amount.value,bookingId:F.bookingId.value,notes:F.notes.value}});closePanel();toast("Enregistré");load()}catch(x){toast(x.message)}}},"Enregistrer")]);
+}
+
+/* ---------- team ---------- */
+function viewTeam(){
+  const U=S.data.users||[];
+  const DESC={owner:"Accès complet",concierge:"Calendrier, réservations, clients, montants",captain:"Ses sorties (infos opérationnelles), maintenance"};
+  return [topBar("Accès au back office","Équipe",h("button",{class:"btn",onclick:openInvite},"+ Inviter")),
+    h("div",{class:"tw"},h("table",{class:"t"},h("thead",{},h("tr",{},["Nom","Rôle","Statut",""].map(x=>h("th",{},x)))),
+      h("tbody",{},U.map(u=>h("tr",{},h("td",{},h("b",{style:"font-weight:500"},u.name||"—"),h("div",{class:"small muted"},u.email),u.phone?h("div",{class:"small muted"},u.phone):null),
+        h("td",{},u.id===S.data.me.id?ROLE[u.role]:sel(u.role,Object.entries(ROLE),{onchange:async e=>{await api("users/"+u.id,{body:{role:e.target.value}});toast("Rôle modifié");load()}}),h("div",{class:"small muted"},DESC[u.role])),
+        h("td",{},!u.active?h("span",{class:"badge b-cancelled"},"Désactivé"):u.pending?h("span",{class:"badge b-due"},"Invitation envoyée"):h("span",{class:"badge b-paid"},"Actif"),u.lastLogin?h("div",{class:"small muted"},"Vu "+fd(u.lastLogin.slice(0,10))):null),
+        h("td",{class:"n"},u.id===S.data.me.id?h("span",{class:"small muted"},"Vous"):h("div",{class:"bar",style:"justify-content:flex-end"},
+          u.pending?h("button",{class:"btn sm line",onclick:async()=>{const r=await api(`users/${u.id}/reinvite`,{body:{}});linkInfo(r)}},"Renvoyer"):null,
+          h("button",{class:"btn sm line",onclick:async()=>{await api("users/"+u.id,{body:{active:!u.active}});load()}},u.active?"Désactiver":"Réactiver"),
+          h("button",{class:"btn sm danger",onclick:async()=>{if(!confirm(`Supprimer l'accès de ${u.name||u.email} ?`))return;await api("users/"+u.id,{method:"DELETE"});load()}},"Supprimer")))))))),
+    h("p",{class:"small muted",style:"margin-top:12px"},"Les capitaines ne voient jamais les montants, les frais ni les coordonnées complètes des clients : uniquement le prénom et le téléphone du client pour les sorties qui leur sont assignées.")];
+}
+function linkInfo(r){panel("Invitation","Équipe",[h("p",{style:"margin:0"},r.sent?"L'invitation a été envoyée par e-mail.":"L'e-mail n'a pas pu partir. Transmettez ce lien directement (valable 7 jours) :"),h("input",{class:"search",readonly:true,value:r.link,onclick:e=>{e.target.select();navigator.clipboard?.writeText(r.link);toast("Lien copié")}}),
+  h("a",{class:"btn sm line",target:"_blank",href:"https://wa.me/?text="+encodeURIComponent("Ton accès au back office SARE : "+r.link)},"Partager par WhatsApp")],[]);load()}
+function openInvite(){
+  const F={name:inp("",{placeholder:"Prénom Nom"}),email:inp("",{type:"email"}),phone:inp("",{type:"tel"}),role:sel("captain",[["captain","Capitaine"],["concierge","Concierge"],["owner","Propriétaire (accès complet)"]])};
+  panel("Inviter un membre","Équipe",[field("Nom",F.name),field("E-mail",F.email),field("Téléphone",F.phone),field("Rôle",F.role),h("p",{class:"small muted",style:"margin:0"},"Il reçoit un e-mail pour créer son mot de passe.")],
+    [h("button",{class:"btn",onclick:async()=>{try{const r=await api("users",{body:{name:F.name.value,email:F.email.value,phone:F.phone.value,role:F.role.value}});linkInfo(r)}catch(e){toast(e.message)}}},"Envoyer l'invitation")]);
+}
+
+/* ---------- account ---------- */
+function viewMe(){
+  const cur=h("input",{type:"password",autocomplete:"current-password"}),nw=h("input",{type:"password",autocomplete:"new-password"}),err=h("div",{class:"err"});
+  return [topBar(ROLE[role()],S.data.me.name||"Mon compte"),
+    h("div",{class:"card grid",style:"max-width:460px"},h("div",{},h("div",{class:"eyebrow"},"Connecté"),h("div",{},S.data.me.email)),
+      h("h3",{},"Changer mon mot de passe"),field("Mot de passe actuel",cur),field("Nouveau (8 caractères min.)",nw),err,
+      h("div",{class:"bar"},h("button",{class:"btn",onclick:async()=>{err.textContent="";try{await api("password",{body:{current:cur.value,next:nw.value}});toast("Mot de passe modifié");cur.value=nw.value=""}catch(e){err.textContent=e.message}}},"Enregistrer"),
+        h("button",{class:"btn line",onclick:async()=>{await fetch("/api/admin/logout",{method:"POST"});S.data=null;render()}},"Se déconnecter")))];
+}
+
+/* ---------- boot ---------- */
+const hv=location.hash.slice(1);if(hv&&!hv.startsWith("invite="))S.view=hv;
+window.addEventListener("hashchange",()=>{const v=location.hash.slice(1);if(S.data&&v&&v!==S.view&&!v.startsWith("invite=")){S.view=v;render()}});
+if(location.hash.startsWith("#invite="))render();else load();
+document.addEventListener("keydown",e=>{if(e.key==="Escape")closePanel()});
+</script>
+</body>
+</html>

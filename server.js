@@ -5,6 +5,7 @@ import path from "node:path";
 import crypto from "node:crypto";
 import nodemailer from "nodemailer";
 import * as tpl from "./mailtpl.js";
+import * as admin from "./admin.js";
 
 const PORT = process.env.PORT || 3000;
 const PUB = path.join(path.dirname(new URL(import.meta.url).pathname), "public");
@@ -119,7 +120,7 @@ function adminPage(list, flash) {
       const tel = String(r.contact || r.phone || "").replace(/\D/g, "");
       pay = `<span class="wait">En attente · ${money(p.amount)}</span><br><input readonly value="${esc(p.url)}" onclick="this.select();navigator.clipboard&&navigator.clipboard.writeText(this.value)"><br>
       <a target="_blank" href="https://wa.me/${tel}?text=${msg}">WhatsApp</a> · <a href="mailto:${esc(r.email || "")}?subject=${encodeURIComponent("SARE · Acompte de réservation")}&body=${msg}">E-mail</a>`;
-    } else pay = STRIPE_KEY ? `<form method="post" action="/admin/pay"><input type="hidden" name="key" value="${esc(k)}"><input name="amount" type="number" min="1" step="1" value="${def}" placeholder="€" required> € <button>Créer le lien d'acompte</button>${est ? `<br><small>${DEPOSIT_PCT} % de ${money(est)}</small>` : ""}</form>` : `<small>Stripe non configuré</small>`;
+    } else pay = STRIPE_KEY ? `<form method="post" action="/admin/legacy/pay"><input type="hidden" name="key" value="${esc(k)}"><input name="amount" type="number" min="1" step="1" value="${def}" placeholder="€" required> € <button>Créer le lien d'acompte</button>${est ? `<br><small>${DEPOSIT_PCT} % de ${money(est)}</small>` : ""}</form>` : `<small>Stripe non configuré</small>`;
     return `<tr><td>${esc(r.receivedAt?.slice(0, 16).replace("T", " "))}</td><td><b>${esc(r.type)}</b></td><td>${esc(r.name)}<br><small>${esc(r.email || r.contact)}</small></td><td><pre>${esc(summary(r))}</pre></td><td class="pay">${pay}</td></tr>`;
   }).join("");
   return `<!doctype html><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>SARE · Requests</title>
@@ -139,9 +140,13 @@ async function getRates() {
   return fx.rates;
 }
 
+admin.init({ DATA_DIR, ADMIN_PASSWORD, NOTIFY_TO, MAIL_FROM, SITE, mailer, readRequests: readAll, readPays, addPay, keyOf, createDepositLink, stripeReady: () => !!STRIPE_KEY });
+
 const server = http.createServer(async (req, res) => {
   const url = new URL(req.url, "http://x");
   const ip = (req.headers["x-forwarded-for"] || req.socket.remoteAddress || "").split(",")[0].trim();
+  if (await admin.handle(req, res, url, ip)) return;
+  if (url.pathname === "/admin" || url.pathname === "/admin/") { res.writeHead(200, { "Content-Type": "text/html; charset=utf-8", "Cache-Control": "no-cache", "X-Robots-Tag": "noindex", "X-Frame-Options": "DENY" }); return fs.createReadStream(path.join(PUB, "admin.html")).pipe(res); }
   if (req.method === "POST" && url.pathname === "/api/request") {
     if (limited(ip)) { res.writeHead(429); return res.end(); }
     let body = ""; for await (const c of req) { body += c; if (body.length > 50000) { res.writeHead(413); return res.end(); } }
@@ -163,14 +168,16 @@ const server = http.createServer(async (req, res) => {
       if (key) {
         const amount = (o.amount_total || 0) / 100;
         addPay({ key, status: "paid", paidAt: new Date().toISOString(), paidAmount: amount, session: o.id, email: o.customer_details?.email });
+        admin.onPaid(key, amount);
         stripe("payment_links/" + linkId, { active: "false" }).catch(e => console.error("deactivate", e.message));
-        const r = readAll().find(x => keyOf(x) === key) || {};
+        const bk = admin.bookingForKey(key);
+        const r = bk ? { name: bk.client?.name, formula: bk.title, date: bk.date } : (readAll().find(x => keyOf(x) === key) || {});
         if (mailer) mailer.sendMail({ from: MAIL_FROM, to: NOTIFY_TO, subject: `SARE · Acompte reçu · ${r.name || ""} · ${amount} € (${key})`, text: `Acompte de ${amount} € reçu pour ${r.name || ""} (${r.formula || r.type || ""} ${r.date || ""}).\n\nhttps://sare-exclusive.com/admin` }).catch(e => console.error("mail", e.message));
       }
     }
     res.writeHead(200, { "Content-Type": "application/json" }); return res.end('{"received":true}');
   }
-  if (req.method === "POST" && url.pathname === "/admin/pay") {
+  if (req.method === "POST" && url.pathname === "/admin/legacy/pay") {
     if (!authed(req)) { res.writeHead(401, { "WWW-Authenticate": 'Basic realm="SARE"' }); return res.end("Login required"); }
     let body = ""; for await (const c of req) { body += c; if (body.length > 5000) break; }
     const f = new URLSearchParams(body), key = f.get("key"), amount = Number(f.get("amount"));
@@ -181,7 +188,7 @@ const server = http.createServer(async (req, res) => {
     catch (e) { console.error("stripe", e.message); flash = "Erreur Stripe : " + e.message; }
     res.writeHead(200, { "Content-Type": "text/html; charset=utf-8", "Cache-Control": "no-store" }); return res.end(adminPage(readAll(), flash));
   }
-  if (url.pathname === "/admin" || url.pathname === "/admin.json") {
+  if (url.pathname === "/admin/legacy" || url.pathname === "/admin.json") {
     if (!authed(req)) { res.writeHead(401, { "WWW-Authenticate": 'Basic realm="SARE"' }); return res.end("Login required"); }
     const list = readAll();
     if (url.pathname === "/admin.json") { res.writeHead(200, { "Content-Type": "application/json" }); return res.end(JSON.stringify(list)); }
