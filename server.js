@@ -29,7 +29,7 @@ const mailer = process.env.SMTP_HOST ? nodemailer.createTransport({
   auth: { user: process.env.SMTP_USER, pass: process.env.SMTP_PASS },
 }) : null;
 
-const TYPES = { ".html": "text/html; charset=utf-8", ".jpg": "image/jpeg", ".jpeg": "image/jpeg", ".png": "image/png", ".svg": "image/svg+xml", ".ico": "image/x-icon", ".txt": "text/plain; charset=utf-8", ".xml": "application/xml" };
+const TYPES = { ".html": "text/html; charset=utf-8", ".jpg": "image/jpeg", ".jpeg": "image/jpeg", ".png": "image/png", ".svg": "image/svg+xml", ".ico": "image/x-icon", ".txt": "text/plain; charset=utf-8", ".xml": "application/xml", ".pdf": "application/pdf" };
 const esc = s => String(s ?? "").replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
 const hits = new Map();
 function limited(ip) { const now = Date.now(); const a = (hits.get(ip) || []).filter(t => now - t < 3600e3); a.push(now); hits.set(ip, a); return a.length > 20; }
@@ -55,11 +55,14 @@ async function stripe(pathname, params) {
   if (!r.ok) throw new Error(j.error?.message || ("Stripe " + r.status));
   return j;
 }
-async function createDepositLink(r, amountEur) {
+async function createDepositLink(r, amountEur, feePct = 0) {
   const label = [r.formula || r.type || "SARE", r.date].filter(Boolean).join(" · ");
   const price = await stripe("prices", { currency: "eur", unit_amount: Math.round(amountEur * 100), product_data: { name: `Deposit · SARE Caribbean Breeze · ${label}`.slice(0, 250) } });
+  const items = { 0: { price: price.id, quantity: 1 } };
+  const fee = Math.round(amountEur * feePct) / 100;
+  if (fee > 0) { const fp = await stripe("prices", { currency: "eur", unit_amount: Math.round(fee * 100), product_data: { name: `Card processing fee (${feePct}%)` } }); items[1] = { price: fp.id, quantity: 1 }; }
   const link = await stripe("payment_links", {
-    line_items: { 0: { price: price.id, quantity: 1 } },
+    line_items: items,
     metadata: { ref: keyOf(r), name: r.name || "" },
     payment_intent_data: { description: `SARE deposit ${keyOf(r)} · ${r.name || ""}`.slice(0, 350), metadata: { ref: keyOf(r) } },
     after_completion: { type: "redirect", redirect: { url: SITE + "/#paid" } },
@@ -168,7 +171,7 @@ const server = http.createServer(async (req, res) => {
       if (key) {
         const amount = (o.amount_total || 0) / 100;
         addPay({ key, status: "paid", paidAt: new Date().toISOString(), paidAmount: amount, session: o.id, email: o.customer_details?.email });
-        admin.onPaid(key, amount);
+        admin.onPaid(key, amount, pays.get(key));
         stripe("payment_links/" + linkId, { active: "false" }).catch(e => console.error("deactivate", e.message));
         const bk = admin.bookingForKey(key);
         const r = bk ? { name: bk.client?.name, formula: bk.title, date: bk.date } : (readAll().find(x => keyOf(x) === key) || {});

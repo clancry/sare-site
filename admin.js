@@ -16,6 +16,7 @@ let ctx, FILE, db;
 function load() {
   try { db = JSON.parse(fs.readFileSync(FILE, "utf8")); } catch { db = {}; }
   db.meta ||= {}; db.users ||= []; db.archived ||= []; db.deletedReqs ||= [];
+  db.settings ||= {}; db.settings.cardFeePct ??= 2.5; db.settings.depositPct ??= 30; db.settings.wireDiscountPct ??= 0; db.settings.bank ||= {}; db.settings.company ||= {};
   for (const c of COLLS) db[c] ||= [];
   db.meta.secret ||= crypto.randomBytes(32).toString("hex");
 }
@@ -71,7 +72,9 @@ function bundle(u) {
   const archived = new Set(db.archived);
   const del = new Set(db.deletedReqs);
   out.requests = ctx.readRequests().filter(r => !del.has(ctx.keyOf(r))).map(r => ({ ...r, key: ctx.keyOf(r), archived: archived.has(ctx.keyOf(r)) })).reverse();
-  if (u.role === "owner") { out.maintenance = db.maintenance; out.expenses = db.expenses; out.users = db.users.map(pubUser); }
+  out.lastBackup = db.meta.lastBackup || "";
+  out.settings = { cardFeePct: db.settings.cardFeePct, depositPct: db.settings.depositPct, wireDiscountPct: db.settings.wireDiscountPct, hasBank: !!db.settings.bank.iban };
+  if (u.role === "owner") { out.maintenance = db.maintenance; out.expenses = db.expenses; out.users = db.users.map(pubUser); out.settings = db.settings; }
   return out;
 }
 
@@ -162,6 +165,33 @@ function sheetMail(b, cap) {
   return sendMail(cap.email, `SARE · Fiche de sortie · ${b.date} · ${b.title || b.ref || ""}`, frame(`Fiche de sortie · ${b.title || ""}`, `<table width="100%" cellpadding="0" cellspacing="0">${rows}</table>${button(ctx.SITE + "/admin", "Ouvrir le back office")}`), rows.replace(/<[^>]+>/g, " "));
 }
 
+async function makeLink(bk, base) {
+  const pct = Number(db.settings.cardFeePct) || 0, fee = Math.round(base * pct) / 100;
+  const l = await ctx.createDepositLink({ ref: "bk:" + bk.id, name: bk.client?.name, formula: bk.title || bk.type, date: bk.date }, base, pct);
+  ctx.addPay({ key: "bk:" + bk.id, linkId: l.id, url: l.url, amount: base, fee, card: Math.round((base + fee) * 100) / 100, status: "pending" });
+  return { url: l.url, amount: base, fee, card: Math.round((base + fee) * 100) / 100 };
+}
+/* ---------------- off-site backup ---------------- */
+function backupFiles() {
+  const out = [{ filename: "backoffice.json", content: JSON.stringify(db, null, 1) }];
+  for (const f of ["requests.jsonl", "payments.jsonl"]) { const p = path.join(ctx.DATA_DIR, f); if (fs.existsSync(p)) out.push({ filename: f, content: fs.readFileSync(p) }); }
+  return out;
+}
+async function sendBackup(reason) {
+  if (!ctx.mailer) return false;
+  const day = new Date().toISOString().slice(0, 10);
+  try {
+    await ctx.mailer.sendMail({ from: ctx.MAIL_FROM, to: ctx.NOTIFY_TO, subject: `SARE · Sauvegarde du back office · ${day}`,
+      text: `Sauvegarde ${reason === "manual" ? "manuelle" : "hebdomadaire"} du back office SARE (réservations, clients, maintenance, frais, demandes).\n\nConservez cet e-mail : en cas de problème sur le serveur, ces fichiers permettent de tout restaurer.\n\n${db.bookings.length} réservations · ${db.expenses.length} dépenses · ${db.maintenance.length} entrées de maintenance.`,
+      attachments: backupFiles().map(f => ({ ...f, filename: f.filename.replace(/^/, `sare-${day}-`) })) });
+    db.meta.lastBackup = now(); save(); return true;
+  } catch (e) { console.error("backup", e.message); return false; }
+}
+function backupTick() {
+  const ast = new Date(Date.now() - 4 * 3600e3); // Caribbean time
+  const last = db.meta.lastBackup ? Date.parse(db.meta.lastBackup) : 0;
+  if (ast.getUTCDay() === 1 && ast.getUTCHours() >= 7 && Date.now() - last > 5 * 864e5) sendBackup("weekly");
+}
 /* ---------------- http helpers ---------------- */
 async function body(req, max = 200000) { let s = ""; for await (const c of req) { s += c; if (s.length > max) throw new Error("too large"); } return s ? JSON.parse(s) : {}; }
 const json = (res, code, o) => { res.writeHead(code, { "Content-Type": "application/json", "Cache-Control": "no-store" }); res.end(JSON.stringify(o)); return true; };
@@ -175,11 +205,13 @@ export function init(c) {
     db.users.push({ id: uid(), email: c.NOTIFY_TO.toLowerCase(), name: "Cédric", role: "owner", ...hash(c.ADMIN_PASSWORD), active: true, createdAt: now() });
     save(); console.log("backoffice: owner account created for", c.NOTIFY_TO);
   }
+  setInterval(backupTick, 3600e3); setTimeout(backupTick, 60e3);
 }
-export function onPaid(key, amount, dateIso) {
+export function onPaid(key, amount, pay) {
   if (!key?.startsWith("bk:")) return;
   const b = db.bookings.find(x => x.id === key.slice(3)); if (!b) return;
-  b.payments ||= []; b.payments.push({ date: (dateIso || now()).slice(0, 10), amount, method: "Stripe", note: "Acompte en ligne" });
+  const base = pay?.amount && pay?.fee ? pay.amount : amount;
+  b.payments ||= []; b.payments.push({ date: now().slice(0, 10), amount: base, method: "Stripe", note: "Acompte carte en ligne" + (pay?.fee ? ` (+${pay.fee} € de frais carte)` : "") });
   if (b.status === "option") b.status = "confirmed";
   b.updatedAt = now(); save();
 }
@@ -230,6 +262,25 @@ export async function handle(req, res, url, ip) {
       u.icalToken = b.off ? null : crypto.randomBytes(24).toString("base64url"); save();
       return json(res, 200, { ok: true, url: u.icalToken ? `${ctx.SITE}/api/ical/${u.icalToken}.ics` : "" });
     }
+    if (p.startsWith("/api/admin/backup")) {
+      if (u.role !== "owner") return json(res, 403, { error: "forbidden" });
+      if (m === "POST") return json(res, 200, { ok: await sendBackup("manual") });
+      const day = new Date().toISOString().slice(0, 10);
+      res.writeHead(200, { "Content-Type": "application/json", "Content-Disposition": `attachment; filename="sare-backup-${day}.json"`, "Cache-Control": "no-store" });
+      const files = backupFiles(); res.end(JSON.stringify({ exportedAt: now(), backoffice: db, requests: String(files.find(f => f.filename === "requests.jsonl")?.content || ""), payments: String(files.find(f => f.filename === "payments.jsonl")?.content || "") }));
+      return true;
+    }
+    if (p === "/api/admin/settings" && m === "POST") {
+      if (u.role !== "owner") return json(res, 403, { error: "forbidden" });
+      const b = await body(req), S = db.settings;
+      const pct = v => { const n = num(v); return n == null ? 0 : Math.max(0, Math.min(10, n)); };
+      if (b.cardFeePct != null) S.cardFeePct = pct(b.cardFeePct);
+      if (b.wireDiscountPct != null) S.wireDiscountPct = pct(b.wireDiscountPct);
+      if (b.depositPct != null) S.depositPct = Math.max(0, Math.min(100, num(b.depositPct) ?? 30));
+      if (b.bank) S.bank = { holder: str(b.bank.holder, 120), bank: str(b.bank.bank, 120), iban: str(b.bank.iban, 50).toUpperCase(), bic: str(b.bank.bic, 20).toUpperCase(), address: str(b.bank.address, 200) };
+      if (b.company) S.company = Object.fromEntries(["name", "form", "address", "reg", "vat", "director", "phone", "email", "capital"].map(k => [k, str(b.company[k], 200)]));
+      save(); return json(res, 200, { ok: true, settings: S });
+    }
     // users (owner only)
     if (p.startsWith("/api/admin/users")) {
       if (u.role !== "owner") return json(res, 403, { error: "forbidden" });
@@ -275,16 +326,16 @@ export async function handle(req, res, url, ip) {
         const b = await body(req);
         const paid = (bk.payments || []).reduce((s, x) => s + (Number(x.amount) || 0), 0);
         let link = null; const pay = ctx.readPays().get("bk:" + bk.id);
-        if (pay?.url && pay.status !== "paid") link = { url: pay.url, amount: pay.amount };
         const want = num(b.deposit) ?? bk.deposit;
-        if (!link && b.withDeposit !== false && ctx.stripeReady() && want > 0 && paid < want) {
-          const l = await ctx.createDepositLink({ ref: "bk:" + bk.id, name: bk.client?.name, formula: bk.title || bk.type, date: bk.date }, want - paid);
-          ctx.addPay({ key: "bk:" + bk.id, linkId: l.id, url: l.url, amount: want - paid, status: "pending" }); link = { url: l.url, amount: want - paid };
-        }
-        const m2 = tpl.confirmEmail(bk, link); const att = await m2.pdf().catch(() => null);
+        const due = want > 0 && paid < want ? Math.round((want - paid) * 100) / 100 : 0;
+        if (pay?.url && pay.status !== "paid" && pay.amount === due) link = { url: pay.url, amount: pay.amount, fee: pay.fee || 0, card: pay.card || pay.amount };
+        if (!link && due && ctx.stripeReady()) link = await makeLink(bk, due);
+        const st = db.settings, wire = due && st.bank?.iban ? { amount: Math.round(due * (1 - (Number(st.wireDiscountPct) || 0) / 100) * 100) / 100, discount: Number(st.wireDiscountPct) || 0, bank: st.bank } : null;
+        if (!link && due && !wire) link = null;
+        const m2 = tpl.confirmEmail(bk, link, wire, due); const att = await m2.pdf().catch(() => null);
         await ctx.mailer.sendMail({ from: ctx.MAIL_FROM, to, replyTo: ctx.NOTIFY_TO, subject: m2.subject, html: m2.html, text: m2.text, attachments: att ? [{ filename: `SARE-${bk.ref}.pdf`, content: att, contentType: "application/pdf" }] : [] });
         bk.confirmSentAt = now(); if (bk.status === "option") bk.status = "confirmed"; save();
-        return json(res, 200, { ok: true, deposit: !!link });
+        return json(res, 200, { ok: true, deposit: !!link, wire: !!wire });
       }
       if (ba[2] === "sheet") {
         const cap = db.users.find(x => x.id === bk.captainId); if (!cap) return json(res, 400, { error: "Aucun capitaine assigné." });
@@ -293,9 +344,8 @@ export async function handle(req, res, url, ip) {
       const b = await body(req); const amount = num(b.amount);
       if (!(amount > 0)) return json(res, 400, { error: "Montant invalide." });
       if (!ctx.stripeReady()) return json(res, 400, { error: "Stripe n'est pas encore configuré." });
-      const link = await ctx.createDepositLink({ ref: "bk:" + bk.id, name: bk.client?.name, formula: bk.title || bk.type, date: bk.date }, amount);
-      ctx.addPay({ key: "bk:" + bk.id, linkId: link.id, url: link.url, amount, status: "pending" });
-      return json(res, 200, { ok: true, url: link.url });
+      const link = await makeLink(bk, amount);
+      return json(res, 200, { ok: true, url: link.url, card: link.card, fee: link.fee });
     }
 
     // generic collections
