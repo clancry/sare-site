@@ -174,7 +174,7 @@ async function makeLink(bk, base) {
 /* ---------------- off-site backup ---------------- */
 function backupFiles() {
   const out = [{ filename: "backoffice.json", content: JSON.stringify(db, null, 1) }];
-  for (const f of ["requests.jsonl", "payments.jsonl"]) { const p = path.join(ctx.DATA_DIR, f); if (fs.existsSync(p)) out.push({ filename: f, content: fs.readFileSync(p) }); }
+  for (const f of ["requests.jsonl", "payments.jsonl", "stats.json"]) { const p = path.join(ctx.DATA_DIR, f); if (fs.existsSync(p)) out.push({ filename: f, content: fs.readFileSync(p) }); }
   return out;
 }
 async function sendBackup(reason) {
@@ -261,6 +261,11 @@ export async function handle(req, res, url, ip) {
       const b = await body(req);
       u.icalToken = b.off ? null : crypto.randomBytes(24).toString("base64url"); save();
       return json(res, 200, { ok: true, url: u.icalToken ? `${ctx.SITE}/api/ical/${u.icalToken}.ics` : "" });
+    }
+    if (p === "/api/admin/stats") {
+      if (u.role === "captain") return json(res, 403, { error: "forbidden" });
+      const n = Math.min(400, Math.max(1, Number(url.searchParams.get("days")) || 30));
+      return json(res, 200, ctx.stats ? ctx.stats(n) : { days: [] });
     }
     if (p.startsWith("/api/admin/backup")) {
       if (u.role !== "owner") return json(res, 403, { error: "forbidden" });

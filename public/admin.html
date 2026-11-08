@@ -151,6 +151,7 @@ function toast(m){const t=h("div",{class:"toast"},m);document.body.append(t);set
 async function api(path,opts={}){const r=await fetch("/api/admin/"+path,{method:opts.method||(opts.body?"POST":"GET"),headers:{"Content-Type":"application/json"},body:opts.body?JSON.stringify(opts.body):undefined,credentials:"same-origin"});
   const j=await r.json().catch(()=>({}));if(r.status===401&&j.error==="auth"){S.data=null;render();throw new Error("auth")}if(!r.ok)throw new Error(j.error||"Erreur");return j}
 const ICON={
+ stats:'<path d="M4 20V10h3v10H4zm6.5 0V4h3v16h-3zM17 20v-7h3v7h-3z"/>',
  dash:'<path d="M3 13h8V3H3v10zm0 8h8v-6H3v6zm10 0h8V11h-8v10zm0-18v6h8V3h-8z"/>',
  cal:'<path d="M7 2v2H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6a2 2 0 0 0-2-2h-2V2h-2v2H9V2H7zm-2 8h14v10H5V10z"/>',
  book:'<path d="M4 6h16v2H4zm0 5h16v2H4zm0 5h10v2H4z"/>',
@@ -175,7 +176,7 @@ const role=()=>S.data?.me?.role;
 const staffName=id=>(S.data.staff.find(s=>s.id===id)||{}).name||"";
 const VIEWS=()=>role()==="captain"
   ?[["dash","Mes sorties","dash"],["cal","Planning","cal"],["maint","Maintenance","wrench"],["me","Compte","me"]]
-  :[["dash","Tableau de bord","dash"],["cal","Calendrier","cal"],["book","Réservations","book"],["req","Demandes","inbox"],["clients","Clients","users"],
+  :[["dash","Tableau de bord","dash"],["cal","Calendrier","cal"],["book","Réservations","book"],["req","Demandes","inbox"],["clients","Clients","users"],["stats","Statistiques","stats"],
     ...(role()==="owner"?[["maint","Maintenance","wrench"],["exp","Frais & résultats","euro"],["team","Équipe","team"],["settings","Paramètres","gear"]]:[]),["me","Compte","me"]];
 async function load(){try{S.data=await api("data")}catch(e){if(e.message!=="auth")toast(e.message)}render()}
 function go(v){S.view=v;location.hash=v;render();window.scrollTo(0,0)}
@@ -217,7 +218,7 @@ function render(){
     h("div",{class:"who"},h("b",{},S.data.me.name||S.data.me.email),ROLE[role()]));
   const tabs=h("nav",{class:"tabbar"},v.filter(x=>role()==="captain"||["dash","cal","book","req","me"].includes(x[0])).map(([k,l,i])=>h("a",{href:"#"+k,class:S.view===k?"on":"",onclick:e=>{e.preventDefault();go(k)}},svg(i),(l==="Mes sorties"?"Sorties":l==="Tableau de bord"?"Accueil":l.split(" ")[0]))));
   const main=h("main",{class:"main"},h("div",{class:"mtop"},h("a",{class:"brand",href:"/",target:"_blank",rel:"noopener",style:"text-decoration:none"},"SARE ",h("span",{style:"font:500 10px var(--body);letter-spacing:.1em;color:var(--mist);vertical-align:middle"},"↗ SITE")),h("span",{class:"small",style:"color:var(--mist)"},ROLE[role()])));
-  const fn={dash:role()==="captain"?viewCaptainDash:viewDash,cal:viewCal,book:viewBookings,req:viewRequests,clients:viewClients,maint:viewMaint,exp:viewExpenses,team:viewTeam,settings:viewSettings,me:viewMe}[S.view];
+  const fn={dash:role()==="captain"?viewCaptainDash:viewDash,cal:viewCal,book:viewBookings,req:viewRequests,clients:viewClients,maint:viewMaint,exp:viewExpenses,team:viewTeam,settings:viewSettings,stats:viewStats,me:viewMe}[S.view];
   main.append(...[].concat(fn()).flat(9).filter(x=>x!=null&&x!==false));
   // extra mobile links for owner sections hidden from tabbar
   if(role()!=="captain"&&innerWidth<=900&&S.view==="me"){main.append(h("div",{class:"grid",style:"margin-top:18px"},v.filter(x=>!["dash","cal","book","req","me"].includes(x[0])).map(([k,l])=>h("button",{class:"btn line",onclick:()=>go(k)},l))))}
@@ -478,7 +479,7 @@ function viewExpenses(){
     h("div",{class:"kpis"},[["CA "+y,eur(R),"réservations option/confirmées/effectuées"],["Frais "+y,eur(X),"dépenses + maintenance"],["Résultat "+y,eur(R-X),R?Math.round((R-X)/R*100)+" % de marge":""]].map(([a,b,c])=>h("div",{class:"kpi"},h("div",{class:"eyebrow"},a),h("div",{class:"v"},b),h("div",{class:"s"},c)))),
     h("div",{class:"two"},
       h("div",{class:"card"},h("div",{class:"bar",style:"justify-content:space-between"},h("h3",{},"CA et frais par mois · "+y),h("div",{class:"legend",style:"margin:0"},h("span",{},h("i",{style:"background:var(--slate)"}),"CA"),h("span",{},h("i",{style:"background:#d9b7a0"}),"Frais"))),
-        h("div",{class:"bars",style:"margin-bottom:18px"},months.map((m,i)=>h("div",{title:`${m} · CA ${eur(rev[i])} · frais ${eur(ex[i])}`},h("div",{style:"display:flex;gap:2px;align-items:flex-end;height:100%"},h("i",{class:"rv",style:`height:${rev[i]/max*100}%`}),h("i",{class:"ex",style:`height:${ex[i]/max*100}%`})),h("span",{},"JFMAMJJASOND"[i]))))),
+        h("div",{class:"bars",style:"margin-bottom:18px"},months.map((m,i)=>h("div",{title:`${m} · CA ${eur(rev[i])} · frais ${eur(ex[i])}`},h("div",{style:"display:flex;flex-direction:row;gap:2px;align-items:flex-end;height:100%"},h("i",{class:"rv",style:`height:${rev[i]/max*100}%`}),h("i",{class:"ex",style:`height:${ex[i]/max*100}%`})),h("span",{},"JFMAMJJASOND"[i]))))),
       h("div",{class:"card"},h("h3",{style:"margin-bottom:10px"},"Répartition des frais · "+y),Object.keys(byCat).length?h("table",{class:"t",style:"border:0"},h("tbody",{},Object.entries(byCat).sort((a,b)=>b[1]-a[1]).map(([k,v])=>h("tr",{},h("td",{},ECAT[k]||k),h("td",{class:"n"},eur(v)))))):h("div",{class:"empty"},"Aucune dépense."))),
     h("div",{class:"bar",style:"justify-content:space-between;margin:24px 0 10px"},h("h2",{style:"text-transform:capitalize"},new Date(S.efilter+"-15").toLocaleDateString("fr-FR",{month:"long",year:"numeric"})),h("div",{class:"bar"},h("button",{class:"btn sm line",onclick:()=>shiftM(-1)},"←"),h("button",{class:"btn sm line",onclick:()=>shiftM(1)},"→"))),
     h("div",{class:"list"},monthE.length?monthE.map(e=>h("div",{class:"row",onclick:()=>openExpense(e)},h("div",{class:"d"},h("b",{},fd(e.date,{day:"numeric",month:"short"}))),h("div",{class:"t"},h("b",{},e.label||ECAT[e.category]),h("span",{},ECAT[e.category])),h("div",{class:"r"},h("b",{},eur(e.amount))))):h("div",{class:"empty"},"Aucune dépense ce mois-ci.")),
@@ -490,6 +491,28 @@ function openExpense(e0){
   panel(e.id?(e.label||"Dépense"):"Nouvelle dépense","Frais",[h("div",{class:"cols"},field("Date",F.date),field("Montant (€)",F.amount)),h("div",{class:"cols"},field("Catégorie",F.category),field("Liée à une sortie",F.bookingId)),field("Libellé",F.label),field("Notes",F.notes)],
     [e.id?h("button",{class:"btn sm danger",onclick:async()=>{if(!confirm("Supprimer ?"))return;await api("expenses/"+e.id,{method:"DELETE"});closePanel();load()}},"Supprimer"):null,
      h("button",{class:"btn",onclick:async()=>{try{await api("expenses"+(e.id?"/"+e.id:""),{body:{date:F.date.value,category:F.category.value,label:F.label.value,amount:F.amount.value,bookingId:F.bookingId.value,notes:F.notes.value}});closePanel();toast("Enregistré");load()}catch(x){toast(x.message)}}},"Enregistrer")]);
+}
+
+/* ---------- visit statistics ---------- */
+S.sdays=30;
+const PAGE_FR={home:"Accueil",yacht:"Le yacht",charter:"Day charter",tender:"Tender yacht",voyages:"Voyages",crew:"Équipage",clearance:"Bon à savoir",book:"Réserver"};
+const pageName=p=>{const [v,l]=p.split("|");return (PAGE_FR[v]||v)+" · "+(l||"").toUpperCase()};
+const EVN={whatsapp:"Clics WhatsApp",fiche_pdf:"Fiches PDF téléchargées",demande_envoyee:"Demandes envoyées",appel:"Clics téléphone",email:"Clics e-mail"};
+function viewStats(){
+  const box=h("div",{},h("div",{class:"empty"},"Chargement…"));
+  api("stats?days="+S.sdays).then(d=>{
+    box.innerHTML="";const max=Math.max(1,...d.days.map(x=>x.v));
+    const lst=(t,rows,fmt=x=>x)=>h("div",{class:"card"},h("h3",{style:"margin-bottom:10px"},t),rows.length?h("table",{class:"t",style:"border:0"},h("tbody",{},rows.map(([k,v])=>h("tr",{},h("td",{},fmt(k)),h("td",{class:"n"},String(v)))))):h("div",{class:"empty"},"Pas encore de données."));
+    const evc=Object.fromEntries(d.ev);
+    box.append(
+      h("div",{class:"kpis"},[["Visiteurs",d.u,"uniques par jour, cumulés"],["Pages vues",d.v,d.u?(d.v/d.u).toFixed(1)+" pages par visiteur":""],["Demandes",evc.demande_envoyee||0,d.u?((evc.demande_envoyee||0)/d.u*100).toFixed(1)+" % des visiteurs":""],["WhatsApp",evc.whatsapp||0,"clics sur le bouton"]].map(([a,b,c])=>h("div",{class:"kpi"},h("div",{class:"eyebrow"},a),h("div",{class:"v"},String(b)),h("div",{class:"s"},c)))),
+      h("div",{class:"card",style:"margin-bottom:16px"},h("div",{class:"bar",style:"justify-content:space-between"},h("h3",{},"Visiteurs par jour"),h("div",{class:"legend",style:"margin:0"},h("span",{},h("i",{style:"background:var(--slate)"}),"Visiteurs"),h("span",{},h("i",{style:"background:#d9b7a0"}),"Pages vues"))),h("div",{class:"bars",style:`margin:14px 0 18px;grid-template-columns:repeat(${d.days.length},1fr);gap:${d.days.length>60?1:3}px`},d.days.map(x=>h("div",{title:`${fd(x.d)} · ${x.u} visiteurs · ${x.v} pages`},h("div",{style:"display:flex;flex-direction:row;gap:1px;align-items:flex-end;height:100%"},h("i",{class:"rv",style:`height:${x.u/max*100}%`}),h("i",{class:"ex",style:`height:${x.v/max*100}%`})),h("span",{},d.days.length<=7||(d.days.length<=31&&(+x.d.slice(8))%5===0)?String(+x.d.slice(8)):""))))),
+      h("div",{class:"two"},lst("Pages les plus vues",d.pages,pageName),lst("Provenance",d.refs)),
+      h("div",{class:"two",style:"margin-top:16px"},lst("Langue",d.langs,x=>x.toUpperCase()),lst("Appareil",d.dev)),
+      h("div",{class:"two",style:"margin-top:16px"},lst("Actions",d.ev,x=>EVN[x]||x),lst("Pays (estimé)",d.ctry)),
+      h("p",{class:"small muted",style:"margin-top:12px"},"Mesure sans cookie ni bandeau : aucune donnée personnelle n'est conservée, seulement des totaux par jour. Les robots sont exclus. Comptage à partir de la mise en ligne de ce module."));
+  }).catch(e=>{box.innerHTML="";box.append(h("div",{class:"empty"},e.message))});
+  return [topBar("Fréquentation du site","Statistiques",h("div",{class:"bar"},[[7,"7 j"],[30,"30 j"],[90,"90 j"],[365,"1 an"]].map(([n,l])=>h("button",{class:"btn sm "+(S.sdays===n?"":"line"),onclick:()=>{S.sdays=n;render()}},l)))),box];
 }
 
 /* ---------- team ---------- */

@@ -6,6 +6,7 @@ import crypto from "node:crypto";
 import nodemailer from "nodemailer";
 import * as tpl from "./mailtpl.js";
 import * as admin from "./admin.js";
+import * as stats from "./stats.js";
 
 const PORT = process.env.PORT || 3000;
 const PUB = path.join(path.dirname(new URL(import.meta.url).pathname), "public");
@@ -143,13 +144,21 @@ async function getRates() {
   return fx.rates;
 }
 
-admin.init({ DATA_DIR, ADMIN_PASSWORD, NOTIFY_TO, MAIL_FROM, SITE, mailer, readRequests: readAll, readPays, addPay, keyOf, createDepositLink, stripeReady: () => !!STRIPE_KEY });
+{ const V = ["home", "yacht", "charter", "tender", "voyages", "crew", "clearance", "book"], map = {};
+  Object.keys(HEADS).forEach((k, i) => { const l = (k.match(/^\/(fr|es|ru|pt|nl)(\/|$)/) || [, "en"])[1]; map[k.replace(/\/$/, "") || "/"] = V[i % 8] + "|" + l; });
+  stats.init(DATA_DIR, p => map[p.replace(/\/$/, "") || "/"]); }
+admin.init({ stats: stats.summary, DATA_DIR, ADMIN_PASSWORD, NOTIFY_TO, MAIL_FROM, SITE, mailer, readRequests: readAll, readPays, addPay, keyOf, createDepositLink, stripeReady: () => !!STRIPE_KEY });
 
 const server = http.createServer(async (req, res) => {
   const url = new URL(req.url, "http://x");
   const ip = (req.headers["x-forwarded-for"] || req.socket.remoteAddress || "").split(",")[0].trim();
   if (await admin.handle(req, res, url, ip)) return;
   if (url.pathname === "/admin" || url.pathname === "/admin/") { res.writeHead(200, { "Content-Type": "text/html; charset=utf-8", "Cache-Control": "no-cache", "X-Robots-Tag": "noindex", "X-Frame-Options": "DENY" }); return fs.createReadStream(path.join(PUB, "admin.html")).pipe(res); }
+  if (req.method === "POST" && url.pathname === "/api/hit") {
+    let body = ""; for await (const c of req) { body += c; if (body.length > 2000) break; }
+    try { stats.hit(req, ip, JSON.parse(body)); } catch {}
+    res.writeHead(204); return res.end();
+  }
   if (req.method === "POST" && url.pathname === "/api/request") {
     if (limited(ip)) { res.writeHead(429); return res.end(); }
     let body = ""; for await (const c of req) { body += c; if (body.length > 50000) { res.writeHead(413); return res.end(); } }
